@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# vercel
+.vercel/
+
+# local env overrides (note: .env.production IS committed — it holds only
+# public client-side VITE_ values needed to build, no secrets)
+.env
+.env.local
+.env.*.local
+
+# logs / os
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
