@@ -36,13 +36,6 @@ export const REQUEST_FIELDS = {
   // Kept so the UI never references an undefined key; they read as
   // null until/unless matching SharePoint columns are added.
   reference_number: '__none_reference_number',
-  implementors: '__none_implementors',
-  manager_approval_date: '__none_manager_approval_date',
-  assigned_date: '__none_assigned_date',
-  actual_start: '__none_actual_start',
-  expected_completion: '__none_expected_completion',
-  cancelled_date: '__none_cancelled_date',
-  onhold_date: '__none_onhold_date',
   coo_prioritization: '__none_coo_prioritization',
   management_notes: '__none_management_notes',
   coo_notes: '__none_coo_notes',
@@ -60,14 +53,6 @@ export const RESOURCE_FIELDS = {
   is_implementor: 'Is_Implementor',
   is_superuser: 'Is_SuperUser',
 }
-
-export const DATE_FIELDS = new Set([
-  'golive_required', 'manager_approval_date', 'assigned_date', 'expected_start',
-  'actual_start', 'expected_completion', 'actual_completion', 'cancelled_date', 'onhold_date',
-])
-export const NUMBER_FIELDS = new Set([
-  'estimated_manhours', 'actual_manhours', 'coo_prioritization', 'percent_complete',
-])
 
 export const toSP = (appFields) => {
   const out = {}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { STATUS_COLOR, STATUSES, QUICK_FILTERS, isAssigned, isOverdue, fmtDate, downloadCSV } from '../lib/meta'
+import { STATUS_COLOR, STATUSES, QUICK_FILTERS, isAssigned, isOverdue, downloadCSV } from '../lib/meta'
 
 // Date field rendered as dd/mm/yyyy regardless of browser locale.
 // Stores/returns ISO yyyy-mm-dd ('' when empty/incomplete).
@@ -49,28 +49,6 @@ export function Flags({ r }) {
       {isAssigned(r) && <span className="flag assigned">Assigned</span>}{' '}
       {isOverdue(r) && <span className="flag overdue">Overdue</span>}
     </>
-  )
-}
-
-const LC = ['Planned', 'Approved', 'In Process', 'Completed']
-export function Lifecycle({ r }) {
-  if (r.status === 'Cancelled')
-    return (
-      <div className="lifecycle">
-        <div className="lc-step done">Planned</div>
-        <div className="lc-step now dead">Cancelled {fmtDate(r.cancelled_date)}</div>
-      </div>
-    )
-  const cur = r.status === 'On Hold' ? 'In Process' : r.status
-  const idx = LC.indexOf(cur)
-  return (
-    <div className="lifecycle">
-      {LC.map((s, i) => (
-        <div key={s} className={'lc-step' + (i < idx ? ' done' : i === idx ? ' now' : '')}>
-          {i === idx && r.status === 'On Hold' ? 'On Hold' : s}
-        </div>
-      ))}
-    </div>
   )
 }
 
@@ -158,87 +136,6 @@ export function ConfirmDialog({ title, body, onYes, onNo, busy }) {
         <div className="row">
           <button className="btn" onClick={onNo} disabled={busy}>No</button>
           <button className="btn primary" onClick={onYes} disabled={busy}>{busy ? 'Working…' : 'Yes'}</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export function AssignDialog({ resources, onSubmit, onClose, busy, error }) {
-  const [selected, setSelected] = useState([])
-  const [priority, setPriority] = useState('')
-  const [expectedStart, setExpectedStart] = useState('')
-  const toggle = (id) =>
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
-  const valid = selected.length > 0 && priority !== '' && Number(priority) >= 0 && expectedStart
-  return (
-    <div className="overlay" onClick={onClose}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <h2>Assign request</h2>
-        {error && <div className="err">{error}</div>}
-        <div className="stack">
-          <label className="f">
-            <span className="k">Implementors team <em>*</em></span>
-            <div className="checklist">
-              {resources.map((r) => (
-                <label key={r.id}>
-                  <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} />
-                  {r.name} <span className="mono" style={{ color: 'var(--ink-soft)' }}>{r.email}</span>
-                </label>
-              ))}
-            </div>
-          </label>
-          <label className="f">
-            <span className="k">COO prioritization <em>*</em></span>
-            <input type="number" min="0" value={priority} onChange={(e) => setPriority(e.target.value)} />
-          </label>
-          <label className="f">
-            <span className="k">Expected start <em>*</em></span>
-            <input type="date" value={expectedStart} onChange={(e) => setExpectedStart(e.target.value)} />
-          </label>
-        </div>
-        <div className="row">
-          <button className="btn" onClick={onClose} disabled={busy}>Cancel</button>
-          <button className="btn primary" disabled={!valid || busy}
-            onClick={() => onSubmit(selected, Number(priority), expectedStart)}>
-            {busy ? 'Assigning…' : 'Assign'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export function CompleteDialog({ onSubmit, onClose, busy, error }) {
-  const [when, setWhen] = useState(new Date().toISOString().slice(0, 16))
-  const [hours, setHours] = useState('')
-  const [summary, setSummary] = useState('')
-  const valid = when && hours !== '' && Number(hours) >= 0 && summary.trim()
-  return (
-    <div className="overlay" onClick={onClose}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <h2>Complete request</h2>
-        {error && <div className="err">{error}</div>}
-        <div className="stack">
-          <label className="f">
-            <span className="k">Actual completion <em>*</em></span>
-            <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
-          </label>
-          <label className="f">
-            <span className="k">Actual man-hours <em>*</em></span>
-            <input type="number" min="0" step="0.5" value={hours} onChange={(e) => setHours(e.target.value)} />
-          </label>
-          <label className="f">
-            <span className="k">Resolution summary <em>*</em></span>
-            <textarea value={summary} onChange={(e) => setSummary(e.target.value)} />
-          </label>
-        </div>
-        <div className="row">
-          <button className="btn" onClick={onClose} disabled={busy}>Cancel</button>
-          <button className="btn primary" disabled={!valid || busy}
-            onClick={() => onSubmit(new Date(when).toISOString(), Number(hours), summary.trim())}>
-            {busy ? 'Completing…' : 'Complete'}
-          </button>
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchProject, fetchProjectTasks, removeProject } from '../lib/projects'
 import { RequestGrid, StatusBadge, Flags, ConfirmDialog } from '../components/ui'
-import { fmtDate } from '../lib/meta'
+import { fmtDate, sanitizeHtml } from '../lib/meta'
 import { useSession } from '../App'
 
 const taskCols = [
@@ -69,7 +69,7 @@ export default function ProjectDetail() {
         {p.notes && (
           <div className="notesblock" style={{ marginTop: 12 }}>
             <h3>Notes</h3>
-            <p dangerouslySetInnerHTML={{ __html: p.notes }} />
+            <p dangerouslySetInnerHTML={{ __html: sanitizeHtml(p.notes) }} />
           </div>
         )}
       </div>

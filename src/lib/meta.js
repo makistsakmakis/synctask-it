@@ -27,6 +27,23 @@ export const QUICK_FILTERS = {
   All: () => true,
 }
 
+// Minimal HTML sanitizer for SharePoint rich-text fields (Notes): strips
+// script-capable elements, event handlers and javascript: URLs before render.
+const BAD_TAGS = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'FORM', 'LINK', 'META', 'BASE'])
+export function sanitizeHtml(html) {
+  if (!html) return ''
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  for (const el of [...doc.body.querySelectorAll('*')]) {
+    if (BAD_TAGS.has(el.tagName)) { el.remove(); continue }
+    for (const a of [...el.attributes]) {
+      const name = a.name.toLowerCase()
+      if (name.startsWith('on') || ((name === 'href' || name === 'src')
+        && a.value.trim().toLowerCase().startsWith('javascript:'))) el.removeAttribute(a.name)
+    }
+  }
+  return doc.body.innerHTML
+}
+
 export const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB') : '—')
 export const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('en-GB') : '—')
 
