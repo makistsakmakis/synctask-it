@@ -44,12 +44,6 @@ export default function ProjectsDashboard() {
 
   return (
     <>
-      <div className="pagehead">
-        <div>
-          <h1>Projects Dashboard</h1>
-          <div className="sub">All projects — figures live from the database.</div>
-        </div>
-      </div>
       <div className="kpis">
         <div className="kpi"><div className="n">{k.total}</div><div className="l">Total projects</div></div>
         <div className="kpi"><div className="n">{k.active}</div><div className="l">Active</div></div>

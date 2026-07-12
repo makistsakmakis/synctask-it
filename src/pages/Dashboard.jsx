@@ -58,12 +58,6 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="pagehead">
-        <div>
-          <h1>Tasks Dashboard</h1>
-          <div className="sub">System-wide operational view — all figures live from the database.</div>
-        </div>
-      </div>
       <div className="kpis">
         <div className="kpi"><div className="n">{k.open}</div><div className="l">Total open</div></div>
         <div className="kpi"><div className="n">{k.notStarted}</div><div className="l">Not started</div></div>

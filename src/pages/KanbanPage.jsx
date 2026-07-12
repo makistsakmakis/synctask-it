@@ -21,12 +21,6 @@ export default function KanbanPage() {
 
   return (
     <>
-      <div className="pagehead">
-        <div>
-          <h1>TASKS - Kanban</h1>
-          <div className="sub">Visual overview by status.</div>
-        </div>
-      </div>
       <div className="toolbar">
         <div className="chips" style={{ gap: 8 }}>
           <MultiFilter label="Assignee" options={assigneeOpts} value={assignees} onChange={setAssignees} />

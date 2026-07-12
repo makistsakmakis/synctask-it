@@ -4,12 +4,10 @@ import { getAccount, signOut, CONFIGURED } from './lib/auth'
 import { fetchManagers, fetchResources } from './lib/api'
 import Login from './pages/Login'
 import RequestsPage from './pages/RequestsPage'
-import Dashboard from './pages/Dashboard'
 import RequestDetail from './pages/RequestDetail'
 import RequestForm from './pages/RequestForm'
-import KanbanPage from './pages/KanbanPage'
-import ProjectsKanbanPage from './pages/ProjectsKanban'
-import ProjectsDashboard from './pages/ProjectsDashboard'
+import TasksOverview from './pages/TasksOverview'
+import ProjectsOverview from './pages/ProjectsOverview'
 import ProjectsPage from './pages/ProjectsPage'
 import ProjectDetail from './pages/ProjectDetail'
 import ProjectForm from './pages/ProjectForm'
@@ -34,12 +32,10 @@ function Shell({ children }) {
           {profile.email}<br />{ROLE_LABEL[role]}{previewRole ? ' (preview)' : ''}
         </div>
         <nav>
-          {role === 'admin' && <NavLink to="/dashboard" end>Tasks Dashboard</NavLink>}
-          <NavLink to="/dashboard/projects">Projects Dashboard</NavLink>
+          {role === 'admin' && <NavLink to="/overview/tasks">Tasks Overview</NavLink>}
+          <NavLink to="/overview/projects">Projects Overview</NavLink>
           <NavLink to="/requests" end>Tasks</NavLink>
           <NavLink to="/projects">Projects</NavLink>
-          {role === 'admin' && <NavLink to="/kanban" end>TASKS - Kanban</NavLink>}
-          <NavLink to="/kanban/projects">Projects - Kanban</NavLink>
         </nav>
         {profile.role === 'admin' && (
           <label className="f" style={{ marginTop: 14 }}>
@@ -117,19 +113,22 @@ export default function App() {
       <BrowserRouter>
         <Shell>
           <Routes>
-            <Route path="/" element={<Navigate to={profile.role === 'admin' ? '/dashboard' : '/requests'} replace />} />
-            <Route path="/dashboard" element={profile.role === 'admin' ? <Dashboard /> : <Navigate to="/dashboard/projects" replace />} />
-            <Route path="/dashboard/projects" element={<ProjectsDashboard />} />
+            <Route path="/" element={<Navigate to={profile.role === 'admin' ? '/overview/tasks' : '/requests'} replace />} />
+            <Route path="/overview/tasks" element={profile.role === 'admin' ? <TasksOverview /> : <Navigate to="/overview/projects" replace />} />
+            <Route path="/overview/projects" element={<ProjectsOverview />} />
             <Route path="/requests" element={<RequestsPage />} />
             <Route path="/requests/new" element={<RequestForm />} />
             <Route path="/requests/:id" element={<RequestDetail />} />
             <Route path="/requests/:id/edit" element={<RequestForm />} />
-            <Route path="/kanban" element={profile.role === 'admin' ? <KanbanPage /> : <Navigate to="/kanban/projects" replace />} />
-            <Route path="/kanban/projects" element={<ProjectsKanbanPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/projects/new" element={<ProjectForm />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="/projects/:id/edit" element={<ProjectForm />} />
+            {/* Legacy URLs from the old 4-page layout */}
+            <Route path="/dashboard" element={<Navigate to="/overview/tasks" replace />} />
+            <Route path="/dashboard/projects" element={<Navigate to="/overview/projects" replace />} />
+            <Route path="/kanban" element={<Navigate to="/overview/tasks" replace />} />
+            <Route path="/kanban/projects" element={<Navigate to="/overview/projects" replace />} />
             <Route path="/diag" element={<Diag />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

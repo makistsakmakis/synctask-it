@@ -15,12 +15,6 @@ export default function ProjectsKanbanPage() {
 
   return (
     <>
-      <div className="pagehead">
-        <div>
-          <h1>Projects - Kanban</h1>
-          <div className="sub">Projects grouped by status.</div>
-        </div>
-      </div>
       <div className="toolbar">
         <div className="chips" style={{ gap: 8 }}>
           <MultiFilter label="Owner" options={ownerOpts} value={owners} onChange={setOwners} />
