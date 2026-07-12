@@ -162,3 +162,11 @@ input:disabled, select:disabled, textarea:disabled { background: #f3f4f1; color:
 @media (prefers-reduced-motion: no-preference) {
   .kcard, tbody tr, .btn { transition: background .12s, border-color .12s; }
 }
+
+.dateinput { position: relative; display: flex; align-items: center; }
+.dateinput input[type="text"] { padding-right: 34px; }
+.calbtn { position: absolute; right: 6px; border: none; background: none; cursor: pointer;
+  font-size: 14px; line-height: 1; padding: 2px; }
+.calbtn:disabled { opacity: .4; cursor: default; }
+.calhidden { position: absolute; right: 8px; bottom: 0; width: 1px; height: 1px;
+  opacity: 0; pointer-events: none; border: 0; padding: 0; }

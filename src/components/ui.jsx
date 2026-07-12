@@ -1,13 +1,49 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { STATUS_COLOR, STATUSES, QUICK_FILTERS, isAssigned, isOverdue, downloadCSV } from '../lib/meta'
 
-// Native date input: stores/returns ISO yyyy-mm-dd ('' when empty) and gives
-// the browser's built-in calendar picker on all date fields.
+// Date field: masked dd/mm/yyyy text entry + calendar picker button.
+// Stores/returns ISO yyyy-mm-dd ('' when empty/incomplete).
+function isoToDisplay(iso) {
+  if (!iso) return ''
+  const [y, m, d] = iso.slice(0, 10).split('-')
+  return d && m && y ? `${d}/${m}/${y}` : ''
+}
+function displayToIso(s) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s)
+  if (!m) return ''
+  const [, dd, mm, yyyy] = m
+  const dt = new Date(`${yyyy}-${mm}-${dd}T00:00:00`)
+  if (Number.isNaN(dt.getTime()) || dt.getMonth() + 1 !== Number(mm)) return ''
+  return `${yyyy}-${mm}-${dd}`
+}
 export function DateInput({ value, onChange, disabled }) {
+  const [text, setText] = useState(isoToDisplay(value))
+  const hiddenRef = useRef(null)
+  useEffect(() => { setText(isoToDisplay(value)) }, [value])
+  const handle = (e) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 8)
+    let out = digits
+    if (digits.length >= 5) out = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`
+    else if (digits.length >= 3) out = `${digits.slice(0, 2)}/${digits.slice(2)}`
+    setText(out)
+    onChange(displayToIso(out))
+  }
+  const openPicker = () => {
+    const el = hiddenRef.current
+    if (!el) return
+    if (el.showPicker) el.showPicker()
+    else el.click()
+  }
   return (
-    <input type="date" value={value ? value.slice(0, 10) : ''}
-      onChange={(e) => onChange(e.target.value)} disabled={disabled} />
+    <div className="dateinput">
+      <input type="text" inputMode="numeric" placeholder="dd/mm/yyyy" maxLength={10}
+        value={text} onChange={handle} disabled={disabled} />
+      <button type="button" className="calbtn" onClick={openPicker} disabled={disabled}
+        aria-label="Open calendar" title="Open calendar">📅</button>
+      <input ref={hiddenRef} type="date" className="calhidden" tabIndex={-1} aria-hidden="true"
+        value={value ? value.slice(0, 10) : ''} onChange={(e) => onChange(e.target.value)} />
+    </div>
   )
 }
 
