@@ -87,6 +87,10 @@ export default function ProjectsPage() {
             onRowClick={(p) => nav(`/projects/${p.id}`)}
             emptyHint={emptyHint}
             filename="projects.xlsx"
+            rowClass={(p) => {
+              if (!p.deadline || p.status === 'Completed') return ''
+              return new Date(p.deadline) < new Date(new Date().toDateString()) ? 'row-overdue' : ''
+            }}
           />
       }
     </>

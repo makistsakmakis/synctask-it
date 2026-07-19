@@ -86,6 +86,7 @@ export function DataGrid({
   railKey,           // if set, a colored left rail is added using STATUS_COLOR[row[railKey]]
   chips,             // { label → filterFn } for quick-filter chip bar at top
   defaultChip,       // initial chip key
+  rowClass,          // (row) => className string — e.g. 'row-overdue'
 }) {
   const [chip, setChip] = useState(defaultChip ?? (chips ? Object.keys(chips)[0] : null))
   const [q, setQ] = useState('')
@@ -267,7 +268,7 @@ export function DataGrid({
               </thead>
               <tbody>
                 {visible.map((r) => (
-                  <tr key={r.id} onClick={() => onRowClick?.(r)}>
+                  <tr key={r.id} className={rowClass?.(r) ?? ''} onClick={() => onRowClick?.(r)}>
                     {railKey && <td className="rail"><div style={{ background: STATUS_COLOR[r[railKey]] }} /></td>}
                     {columns.map((col) => <td key={col.key}>{col.render(r)}</td>)}
                   </tr>
@@ -333,6 +334,7 @@ export function RequestGrid({ rows, columns, filters, defaultFilter = 'Open', em
       railKey="status"
       chips={chipDefs}
       defaultChip={defaultFilter}
+      rowClass={(r) => isOverdue(r) ? 'row-overdue' : ''}
     />
   )
 }

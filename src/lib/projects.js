@@ -53,7 +53,12 @@ const fromSP = (item, users) => {
     link:    f[F.link]    ?? '',
     notes:   (() => {
       const raw = typeof f[F.notes] === 'string' ? f[F.notes] : ''
-      return raw.replace(/<[^>]*>/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).trim()
+      if (!raw) return ''
+      // Decode numeric HTML entities SharePoint inserts (e.g. &#58; → :)
+      const decoded = raw.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+      // Strip the outer <div class="ExternalClass…"> wrapper SharePoint adds, keep inner HTML
+      const m = decoded.match(/^<div[^>]*class="ExternalClass[^"]*"[^>]*>([\s\S]*)<\/div>\s*$/i)
+      return m ? m[1].trim() : decoded.trim()
     })(),
     icon:    (() => {
       const raw = typeof f[F.icon] === 'string' ? f[F.icon] : ''

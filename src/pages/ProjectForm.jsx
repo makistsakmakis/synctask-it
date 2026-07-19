@@ -1,10 +1,80 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
-import { fmtDateTime } from '../lib/meta'
+import { fmtDateTime, sanitizeHtml } from '../lib/meta'
 import { DateInput } from '../components/ui'
 import { fetchProject, createProject, updateProject, fetchProjectStatuses } from '../lib/projects'
 import { fetchUserOptions, fetchManagers } from '../lib/api'
+
+// ── Rich Text Editor dialog ───────────────────────────────────────────────────
+function RichTextEditor({ html, onSave, onClose }) {
+  const editorRef = useRef(null)
+
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = html || ''
+      editorRef.current.focus()
+    }
+  }, [])
+
+  const exec = (cmd, val) => {
+    editorRef.current?.focus()
+    document.execCommand(cmd, false, val ?? null)
+  }
+
+  const addLink = (e) => {
+    e.preventDefault()
+    const url = window.prompt('URL:')
+    if (url) { editorRef.current?.focus(); document.execCommand('createLink', false, url) }
+  }
+
+  const TB = [
+    { label: <b>B</b>,  title: 'Bold',          cmd: 'bold' },
+    { label: <i>I</i>,  title: 'Italic',         cmd: 'italic' },
+    { label: <u>U</u>,  title: 'Underline',      cmd: 'underline' },
+    { label: <s>S</s>,  title: 'Strikethrough',  cmd: 'strikeThrough' },
+  ]
+
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="rte-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="rte-header">
+          <span>Σημειώσεις</span>
+          <button className="rte-close" onClick={onClose} title="Κλείσιμο">✕</button>
+        </div>
+        <div className="rte-toolbar">
+          {TB.map(({ label, title, cmd }) => (
+            <button key={cmd} className="rte-btn" title={title}
+              onMouseDown={(e) => { e.preventDefault(); exec(cmd) }}>{label}</button>
+          ))}
+          <span className="rte-sep" />
+          <button className="rte-btn" title="Επικεφαλίδα H2"
+            onMouseDown={(e) => { e.preventDefault(); exec('formatBlock', 'h2') }}>H2</button>
+          <button className="rte-btn" title="Επικεφαλίδα H3"
+            onMouseDown={(e) => { e.preventDefault(); exec('formatBlock', 'h3') }}>H3</button>
+          <button className="rte-btn" title="Παράγραφος"
+            onMouseDown={(e) => { e.preventDefault(); exec('formatBlock', 'p') }}>¶</button>
+          <span className="rte-sep" />
+          <button className="rte-btn" title="Λίστα με κουκκίδες"
+            onMouseDown={(e) => { e.preventDefault(); exec('insertUnorderedList') }}>• Λίστα</button>
+          <button className="rte-btn" title="Αριθμημένη λίστα"
+            onMouseDown={(e) => { e.preventDefault(); exec('insertOrderedList') }}>1. Λίστα</button>
+          <span className="rte-sep" />
+          <button className="rte-btn" title="Εισαγωγή link" onMouseDown={addLink}>🔗 Link</button>
+          <button className="rte-btn rte-btn-danger" title="Καθαρισμός μορφοποίησης"
+            onMouseDown={(e) => { e.preventDefault(); exec('removeFormat') }}>Clear</button>
+        </div>
+        <div ref={editorRef} className="rte-body" contentEditable suppressContentEditableWarning />
+        <div className="rte-footer">
+          <button className="btn" onClick={onClose}>Ακύρωση</button>
+          <button className="btn primary" onClick={() => onSave(editorRef.current?.innerHTML ?? '')}>
+            Αποθήκευση
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // Field-level edit rights per role for Projects.
 // null = all fields editable.
@@ -61,6 +131,7 @@ export default function ProjectForm() {
   const [audit, setAudit] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showRte, setShowRte] = useState(false)
   const iconRef = useRef(null)
 
   const handleIcon = async (e) => {
@@ -244,11 +315,18 @@ export default function ProjectForm() {
             <input value={form.link} onChange={set('link')} placeholder="https://…"
               disabled={!allowed('link')} />
           </label>
-          <label className="f wide">
-            <span className="k">Notes</span>
-            <textarea value={form.notes} onChange={set('notes')}
-              disabled={!allowed('notes')} />
-          </label>
+          <div className="f wide">
+            <span className="k" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              Notes
+              {allowed('notes') && (
+                <button type="button" className="btn sm" onClick={() => setShowRte(true)}>Edit</button>
+              )}
+            </span>
+            <div
+              className="notes-preview"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.notes) || '<span class="notes-empty">Δεν υπάρχουν σημειώσεις.</span>' }}
+            />
+          </div>
         </div>
 
         {editing && audit && (
@@ -277,6 +355,14 @@ export default function ProjectForm() {
           </div>
         )}
       </div>
+
+      {showRte && (
+        <RichTextEditor
+          html={form.notes}
+          onSave={(html) => { setForm((f) => ({ ...f, notes: html })); setShowRte(false) }}
+          onClose={() => setShowRte(false)}
+        />
+      )}
     </>
   )
 }
