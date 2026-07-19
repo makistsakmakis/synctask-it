@@ -2,23 +2,36 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime, sanitizeHtml } from '../lib/meta'
-import { DateInput, RichTextEditor } from '../components/ui'
+import { DateInput, RichTextEditor, MultiPersonSelect } from '../components/ui'
 import { fetchProject, createProject, updateProject, fetchProjectStatuses } from '../lib/projects'
-import { fetchUserOptions, fetchManagers } from '../lib/api'
+import { fetchUserOptions, fetchManagers, fetchResourceOptions } from '../lib/api'
 
 
 // Field-level edit rights per role for Projects.
 // null = all fields editable.
+const RACI_FIELDS = ['responsible_ids', 'accountable_ids', 'consulted_ids', 'informed_ids']
+
 const PROJECT_RIGHTS = {
   // Owner (requestor): can create/edit project details but not change status or assign supervisor
   requestor: ['title', 'product', 'link', 'notes', 'proposed_start', 'deadline', 'icon'],
-  // Supervisor (manager): can approve (change status) and see all fields; cannot change owner
-  manager: ['status', 'supervisor_id', 'start_date', 'end_date', 'notes', 'icon'],
+  // Supervisor (manager): can approve (change status), edit RACI
+  manager: ['status', 'supervisor_id', 'start_date', 'end_date', 'notes', 'icon', ...RACI_FIELDS],
   // Implementors: read-only on projects
   resource: [],
   // COO: all fields
   admin: null,
 }
+
+const RACI_DEFS = [
+  { key: 'responsible_ids', label: 'Responsible (R)',
+    tooltip: 'The person or team who actually does the work to complete the task. They are responsible for driving the work to completion.' },
+  { key: 'accountable_ids', label: 'Accountable (A)',
+    tooltip: 'The person who has the final say and owns the ultimate success or failure of the deliverable. They approve the completed work and there must be exactly one Accountable person per task.' },
+  { key: 'consulted_ids',   label: 'Consulted (C)',
+    tooltip: 'Subject-matter experts or stakeholders whose opinions are sought before a decision is made or the work is finalized.' },
+  { key: 'informed_ids',    label: 'Informed (I)',
+    tooltip: 'People who are kept up-to-date on project progress or decisions, but are not directly involved in the execution or decision-making.' },
+]
 
 // Resize an image file to max dimensions and return a base64 data URL
 function resizeToDataURL(file, maxPx = 96) {
@@ -45,10 +58,14 @@ const EMPTY = {
   title: '', owner_id: '', supervisor_id: '', status: '',
   start_date: '', end_date: '', proposed_start: '', deadline: '',
   product: '', link: '', notes: '', icon: '',
+  responsible_ids: [], accountable_ids: [], consulted_ids: [], informed_ids: [],
 }
 const DATE_KEYS = ['start_date', 'end_date', 'proposed_start', 'deadline']
-const pick = (p) => Object.fromEntries(Object.keys(EMPTY).map((k) =>
-  [k, DATE_KEYS.includes(k) ? (p[k] ?? '').slice(0, 10) : (p[k] ?? '')]))
+const pick = (p) => Object.fromEntries(Object.keys(EMPTY).map((k) => {
+  if (DATE_KEYS.includes(k)) return [k, (p[k] ?? '').slice(0, 10)]
+  if (RACI_FIELDS.includes(k)) return [k, Array.isArray(p[k]) ? p[k] : []]
+  return [k, p[k] ?? '']
+}))
 
 export default function ProjectForm() {
   const { id } = useParams()
@@ -63,6 +80,7 @@ export default function ProjectForm() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [showRte, setShowRte] = useState(false)
+  const [resourceOpts, setResourceOpts] = useState([])
   const iconRef = useRef(null)
 
   const handleIcon = async (e) => {
@@ -82,6 +100,7 @@ export default function ProjectForm() {
     fetchUserOptions().then(setUsers).catch(() => setUsers([]))
     fetchManagers().then(setManagers).catch(() => setManagers([]))
     fetchProjectStatuses().then(setStatuses).catch(() => setStatuses([]))
+    fetchResourceOptions().then(setResourceOpts).catch(() => setResourceOpts([]))
   }, [])
 
   // New project: default the owner to the current user.
@@ -257,6 +276,31 @@ export default function ProjectForm() {
               className="notes-preview"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.notes) || '<span class="notes-empty">Δεν υπάρχουν σημειώσεις.</span>' }}
             />
+          </div>
+        </div>
+
+        {/* ── RACI ── */}
+        <div style={{ borderTop: '1px solid var(--line)', marginTop: 20, paddingTop: 18 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+            RACI
+            <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, fontSize: 12, color: 'var(--ink-soft)' }}>
+              Responsible · Accountable · Consulted · Informed
+            </span>
+          </div>
+          <div className="form">
+            {RACI_DEFS.map(({ key, label, tooltip }) => (
+              <div key={key} className="f">
+                <span className="k" title={tooltip} style={{ cursor: 'help', textDecorationLine: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>
+                  {label} ⓘ
+                </span>
+                <MultiPersonSelect
+                  options={resourceOpts}
+                  value={form[key]}
+                  onChange={(v) => setForm((f) => ({ ...f, [key]: v }))}
+                  disabled={!allowed(key)}
+                />
+              </div>
+            ))}
           </div>
         </div>
 

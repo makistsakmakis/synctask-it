@@ -322,7 +322,7 @@ export function DataGrid({
                     const sortDir = sort?.key === col.key ? sort.dir : null
                     return (
                       <th key={col.key} className={col.noSort ? '' : 'sortable'} onClick={() => clickSort(col)}>
-                        <div className="th-inner">
+                        <div className="th-inner" data-tooltip={col.tooltip || undefined}>
                           <span>{col.label}{sortDir ? (sortDir > 0 ? ' ↑' : ' ↓') : ''}</span>
                           {!col.noFilter && col.label && (
                             <button
@@ -421,6 +421,52 @@ export function ConfirmDialog({ title, body, onYes, onNo, busy }) {
           <button className="btn primary" onClick={onYes} disabled={busy}>{busy ? 'Working…' : 'Yes'}</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Multi-select person picker for RACI fields.
+// options: [{ id, name }], value: string[] of IDs
+export function MultiPersonSelect({ options, value, onChange, disabled }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+
+  const toggle = (id) => onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id])
+  const selected = options.filter((o) => value.includes(o.id))
+  const label = selected.length === 0 ? 'Επιλογή…'
+    : selected.length <= 2 ? selected.map((o) => o.name).join(', ')
+    : `${selected.slice(0, 2).map((o) => o.name).join(', ')} +${selected.length - 2}`
+
+  return (
+    <div className="mpselect" ref={ref}>
+      <button type="button" className="mpselect-btn" disabled={disabled}
+        onClick={() => setOpen((o) => !o)}>
+        <span style={{ color: selected.length ? 'var(--ink)' : 'var(--ink-soft)' }}>{label}</span>
+        {!disabled && <span style={{ opacity: 0.5 }}>▾</span>}
+      </button>
+      {open && !disabled && (
+        <div className="mfilter pop" style={{ minWidth: '100%' }}>
+          {selected.length > 0 && (
+            <label style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => onChange([])}>
+              Αναίρεση επιλογής
+            </label>
+          )}
+          {options.length === 0 && <label style={{ color: 'var(--ink-soft)' }}>Δεν βρέθηκαν</label>}
+          {options.map((o) => (
+            <label key={o.id}>
+              <input type="checkbox" checked={value.includes(o.id)} onChange={() => toggle(o.id)} />
+              {o.name}
+            </label>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

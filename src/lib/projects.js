@@ -17,6 +17,31 @@ const F = {
   icon: 'Project_Icon',
 }
 
+// ── RACI columns ───────────────────────────────────────────────────────────────
+// ⚠️ Verify these internal names via /diag → Projects list → Internal name column.
+// Pattern: '<InternalName>LookupId'  (Graph API multi-value lookup read key)
+const RACI_COLS = {
+  responsible_ids: 'ResponsibleLookupId',   // update if different
+  accountable_ids: 'AccountableLookupId',
+  consulted_ids:   'ConsultedLookupId',
+  informed_ids:    'InformedLookupId',
+}
+const RACI_KEYS = new Set(Object.keys(RACI_COLS))
+
+// Build id→name map from the Resources list for RACI name resolution
+async function getResourceMap() {
+  const items = await listItems(LISTS.resources)
+  const m = new Map()
+  for (const i of items) m.set(String(i.id), i.fields?.Title ?? String(i.id))
+  return m
+}
+
+// Resolve an array of numeric IDs to display names using the resource map
+function resolveIds(val, map) {
+  const ids = Array.isArray(val) ? val : []
+  return ids.map((id) => map.get(String(id)) ?? String(id)).filter(Boolean)
+}
+
 let _statusWriteColP = null
 function statusWriteCol() {
   return (_statusWriteColP ??= getListColumns(LISTS.projects)
@@ -29,7 +54,7 @@ function statusWriteCol() {
     .catch(() => '_Status'))
 }
 
-const fromSP = (item, users) => {
+const fromSP = (item, users, resMap = new Map()) => {
   const f = item.fields ?? {}
   const ownerId      = f[F.owner_id]
   const supervisorId = f[F.supervisor_id]
@@ -54,9 +79,7 @@ const fromSP = (item, users) => {
     notes:   (() => {
       const raw = typeof f[F.notes] === 'string' ? f[F.notes] : ''
       if (!raw) return ''
-      // Decode numeric HTML entities SharePoint inserts (e.g. &#58; → :)
       const decoded = raw.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-      // Strip the outer <div class="ExternalClass…"> wrapper SharePoint adds, keep inner HTML
       const m = decoded.match(/^<div[^>]*class="ExternalClass[^"]*"[^>]*>([\s\S]*)<\/div>\s*$/i)
       return m ? m[1].trim() : decoded.trim()
     })(),
@@ -65,6 +88,15 @@ const fromSP = (item, users) => {
       const decoded = raw.replace(/<[^>]*>/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).trim()
       return decoded.startsWith('data:image/') ? decoded : ''
     })(),
+    // RACI — IDs (for form state) and resolved names (for display)
+    responsible_ids: (f[RACI_COLS.responsible_ids] ?? []).map(String),
+    accountable_ids: (f[RACI_COLS.accountable_ids] ?? []).map(String),
+    consulted_ids:   (f[RACI_COLS.consulted_ids]   ?? []).map(String),
+    informed_ids:    (f[RACI_COLS.informed_ids]     ?? []).map(String),
+    responsible: resolveIds(f[RACI_COLS.responsible_ids], resMap),
+    accountable: resolveIds(f[RACI_COLS.accountable_ids], resMap),
+    consulted:   resolveIds(f[RACI_COLS.consulted_ids],   resMap),
+    informed:    resolveIds(f[RACI_COLS.informed_ids],     resMap),
     created_at:  item.createdDateTime,
     modified_at: item.lastModifiedDateTime,
     created_by:  item.createdBy?.user?.displayName  ?? '',
@@ -81,6 +113,13 @@ async function toSP(fields) {
     if (v === '' || v == null) { if (k !== 'title') continue; v = '' }
     out[col] = (k === 'owner_id' || k === 'supervisor_id') ? Number(v) : v
   }
+  // RACI multi-value lookup fields
+  for (const [k, col] of Object.entries(RACI_COLS)) {
+    if (!(k in fields)) continue
+    const ids = (fields[k] ?? []).map(Number).filter(Boolean)
+    out[col + '@odata.type'] = 'Collection(Edm.Int32)'
+    out[col] = ids
+  }
   if ('status' in fields && fields.status !== '' && fields.status != null) {
     out[await statusWriteCol()] = fields.status
   }
@@ -88,19 +127,25 @@ async function toSP(fields) {
 }
 
 export async function fetchProjects() {
-  const [items, users] = await Promise.all([listItems(LISTS.projects), getSiteUsers().catch(() => new Map())])
-  return items.map((i) => fromSP(i, users))
+  const [items, users, resMap] = await Promise.all([
+    listItems(LISTS.projects),
+    getSiteUsers().catch(() => new Map()),
+    getResourceMap().catch(() => new Map()),
+  ])
+  return items.map((i) => fromSP(i, users, resMap))
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
 }
 
 export async function fetchProject(id) {
-  const [item, users] = await Promise.all([getItem(LISTS.projects, id), getSiteUsers().catch(() => new Map())])
-  return fromSP(item, users)
+  const [item, users, resMap] = await Promise.all([
+    getItem(LISTS.projects, id),
+    getSiteUsers().catch(() => new Map()),
+    getResourceMap().catch(() => new Map()),
+  ])
+  return fromSP(item, users, resMap)
 }
 
 export async function createProject(fields) {
-  // Create without icon first (Graph POST may ignore unknown/new fields),
-  // then PATCH the icon separately to guarantee it's written.
   const sp = await toSP(fields)
   const icon = sp[F.icon]
   delete sp[F.icon]
@@ -130,7 +175,6 @@ export async function fetchProjectStatuses() {
     const statusCol = cols.find((c) => c.name === '_Status' || c.name === 'OData__Status')
     if (statusCol?.choice?.choices?.length) return statusCol.choice.choices
   } catch {}
-  // fallback: derive from existing project data
   const projects = await fetchProjects()
   const set = [...new Set(projects.map((p) => p.status).filter(Boolean))]
   return set.length

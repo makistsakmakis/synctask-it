@@ -1,4 +1,5 @@
 :root {
+  --font-table: 'Barlow Condensed', 'IBM Plex Sans', sans-serif;
   --ink: #1c2230;
   --ink-soft: #4b5263;
   --bg: #f2f3f0;
@@ -74,8 +75,10 @@ button { font-family: var(--font-body); cursor: pointer; }
 tbody td { white-space: nowrap; }
 table { width: 100%; border-collapse: collapse; }
 thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .7px;
-  color: var(--ink-soft); padding: 10px 12px; border-bottom: 1px solid var(--line); font-weight: 600; }
-tbody td { padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  color: var(--ink-soft); padding: 10px 12px; border-bottom: 1px solid var(--line); font-weight: 600;
+  font-family: var(--font-table); }
+tbody td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: middle;
+  font-family: var(--font-table); font-size: 13.5px; }
 tbody tr { cursor: pointer; }
 tbody tr:hover { background: #f7f8f5; }
 tbody tr.row-overdue { background: #fff0f2; }
@@ -208,6 +211,30 @@ input:disabled, select:disabled, textarea:disabled { background: #f3f4f1; color:
 .proj-icon-placeholder:hover { border-color: var(--accent); color: var(--accent); }
 .proj-icon-preview { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; cursor: pointer;
   border: 2px solid var(--line); flex-shrink: 0; }
+
+/* RACI names cell */
+.raci-names { font-size: 12.5px; color: var(--ink); }
+
+/* Tooltip via data-tooltip attribute (used on RACI column headers) */
+.th-inner[data-tooltip] { position: relative; }
+.th-inner[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  background: #1c2230; color: #fff; padding: 8px 12px; border-radius: 7px;
+  font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0;
+  white-space: normal; width: 280px; line-height: 1.5;
+  opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 250;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+}
+.th-inner[data-tooltip]:hover::after { opacity: 1; }
+
+/* MultiPersonSelect */
+.mpselect { position: relative; }
+.mpselect-btn { width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px;
+  background: var(--surface); font-family: var(--font-body); font-size: 13.5px; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; gap: 6px; text-align: left; }
+.mpselect-btn:disabled { background: #f3f4f1; color: #8b9099; cursor: not-allowed; }
+.mpselect-btn:not(:disabled):hover { border-color: var(--ink-soft); }
 
 /* DataGrid column filters */
 .th-inner { display: flex; align-items: center; gap: 3px; min-width: 0; }

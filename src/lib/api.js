@@ -58,6 +58,14 @@ export function fetchResources() {
     }))))
 }
 
+// Flat { id, name } list for RACI pickers (sorted by name)
+export async function fetchResourceOptions() {
+  const items = await listItems(LISTS.resources)
+  return items
+    .map((i) => ({ id: String(i.id), name: i.fields?.Title ?? String(i.id) }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'el'))
+}
+
 // ---------- shaping ----------
 async function shape(item) {
   const [, , u, projects, tags] =
