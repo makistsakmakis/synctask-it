@@ -1,4 +1,4 @@
-import { LISTS, listItems, getItem, createItem, updateItemFields, deleteItem, getSiteUsers, getListColumns, getSiteId, getListId, g } from './sp'
+import { LISTS, listItems, getItem, createItem, updateItemFields, deleteItem, getSiteUsers, getListColumns } from './sp'
 import { fetchRequests } from './api'
 
 // app field -> SharePoint internal column (Projects list)
@@ -14,25 +14,28 @@ const F = {
   product: 'Product',
   link: 'Link',
   notes: 'Notes',
-  icon: 'Project_Icon',                   // multi-line text — base64 data URL of project icon
+  // icon is embedded inside the Notes column — see parseNotes / serializeNotes
 }
 
-// Ensure Project_Icon column exists in SharePoint (auto-creates if missing). Cached per session.
-let _iconColP = null
-async function ensureIconColumn() {
-  return (_iconColP ??= (async () => {
-    const cols = await getListColumns(LISTS.projects)
-    if (cols.some((c) => c.name === 'Project_Icon')) return true
-    try {
-      const sid = await getSiteId()
-      const lid = await getListId(LISTS.projects)
-      await g(`/sites/${sid}/lists/${lid}/columns`, {
-        method: 'POST',
-        body: { name: 'Project_Icon', displayName: 'Project Icon', text: { allowMultipleLines: true, linesForEditing: 10 } },
-      })
-      return true
-    } catch { return false }
-  })())
+// The icon is stored at the end of the Notes field separated by this sentinel.
+// Using a string that will never appear in normal user text.
+const ICON_SEP = '[[[SYNCFLOW_ICON]]]'
+
+function parseNotes(raw) {
+  const s = typeof raw === 'string' ? raw : ''
+  const idx = s.indexOf(ICON_SEP)
+  if (idx === -1) return { notes: s, icon: '' }
+  const icon = s.slice(idx + ICON_SEP.length)
+  return {
+    notes: s.slice(0, idx),
+    icon: icon.startsWith('data:image/') ? icon : '',
+  }
+}
+
+function serializeNotes(notes, icon) {
+  const n = typeof notes === 'string' ? notes : ''
+  const i = typeof icon === 'string' && icon.startsWith('data:image/') ? icon : ''
+  return i ? n + ICON_SEP + i : n
 }
 
 // Status write-name resolver — Graph reads as OData__Status but writes need the real internal name.
@@ -54,6 +57,7 @@ const fromSP = (item, users) => {
   const supervisorId = f[F.supervisor_id]
   const ownerUser      = users.get(String(ownerId))
   const supervisorUser = users.get(String(supervisorId))
+  const { notes, icon } = parseNotes(f[F.notes])
   return {
     id: String(item.id),
     title: f[F.title] ?? '',
@@ -73,8 +77,8 @@ const fromSP = (item, users) => {
     deadline:       (f[F.deadline]      ?? '').slice(0, 10),
     product: f[F.product] ?? '',
     link:    f[F.link]    ?? '',
-    notes:   f[F.notes]   ?? '',
-    icon:    typeof f[F.icon] === 'string' && f[F.icon].startsWith('data:image/') ? f[F.icon] : '',
+    notes,
+    icon,
     created_at:  item.createdDateTime,
     modified_at: item.lastModifiedDateTime,
     created_by:  item.createdBy?.user?.displayName  ?? '',
@@ -86,10 +90,15 @@ async function toSP(fields) {
   const out = {}
   for (const [k, col] of Object.entries(F)) {
     if (k === 'status') continue // handled separately (write-name differs)
+    if (k === 'notes')  continue // handled separately (combined with icon below)
     if (!(k in fields)) continue
     let v = fields[k]
     if (v === '' || v == null) { if (k !== 'title') continue; v = '' }
     out[col] = (k === 'owner_id' || k === 'supervisor_id') ? Number(v) : v
+  }
+  // Notes and icon are stored together in the Notes column
+  if ('notes' in fields || 'icon' in fields) {
+    out[F.notes] = serializeNotes(fields.notes ?? '', fields.icon ?? '')
   }
   if ('status' in fields && fields.status !== '' && fields.status != null) {
     out[await statusWriteCol()] = fields.status
@@ -109,33 +118,12 @@ export async function fetchProject(id) {
 }
 
 export async function createProject(fields) {
-  // Strip icon from the initial POST — Graph silently ignores unknown fields on item creation,
-  // so we save the icon via a separate PATCH after the item exists.
-  const sp = await toSP(fields)
-  const icon = sp.Project_Icon
-  delete sp.Project_Icon
-  const created = await createItem(LISTS.projects, sp)
-  if (icon) {
-    const ready = await ensureIconColumn()
-    if (ready) {
-      await updateItemFields(LISTS.projects, String(created.id), { Project_Icon: icon }).catch(() => {})
-    }
-  }
+  const created = await createItem(LISTS.projects, await toSP(fields))
   return String(created.id)
 }
 
 export async function updateProject(id, fields) {
-  const sp = await toSP(fields)
-  if ('Project_Icon' in sp) {
-    const ready = await ensureIconColumn()
-    if (!ready) {
-      // Column doesn't exist and couldn't be auto-created — save project without icon and warn.
-      delete sp.Project_Icon
-      await updateItemFields(LISTS.projects, id, sp)
-      throw new Error('Project saved, but the icon could not be stored. Please add a "Multiple lines of text" column named "Project Icon" to the Projects list in SharePoint, then try again.')
-    }
-  }
-  await updateItemFields(LISTS.projects, id, sp)
+  await updateItemFields(LISTS.projects, id, await toSP(fields))
 }
 
 export async function removeProject(id) {
