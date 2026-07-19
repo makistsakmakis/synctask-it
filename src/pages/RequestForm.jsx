@@ -131,7 +131,7 @@ export default function RequestForm() {
           <h1>{editing ? (isReadOnly ? 'View task' : 'Edit task') : 'New task'}</h1>
           <div className="sub">
             {isReadOnly ? 'You can view this task but cannot edit it.'
-              : editing ? 'Fields outside your role's edit rights are locked.'
+              : editing ? "Fields outside your role's edit rights are locked."
               : 'New tasks default to status "Not Started".'}
           </div>
         </div>
