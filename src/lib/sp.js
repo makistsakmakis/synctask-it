@@ -194,7 +194,7 @@ export async function probeItemFields() {
   for (const [label, list] of [['Projects', LISTS.projects], ['Tasks', LISTS.requests]]) {
     try {
       const lid = await getListId(list)
-      const res = await g(`/sites/${sid}/lists/${lid}/items?expand=fields&$top=1`)
+      const res = await g(`/sites/${sid}/lists/${lid}/items?expand=fields&$top=1&$orderby=Modified%20desc`)
       const it = (res.value ?? [])[0]
       out[label] = it ? { keys: Object.keys(it.fields ?? {}), fields: it.fields } : { empty: true }
     } catch (e) { out[label] = { error: e.message } }
