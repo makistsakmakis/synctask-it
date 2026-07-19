@@ -52,23 +52,11 @@ export function sanitizeHtml(html) {
 export const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB') : '—')
 export const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('en-GB') : '—')
 
-export function toCSV(rows) {
-  const cols = ['title', 'status', 'priority', 'request_type', 'requestor_name',
-    'golive_required', 'expected_start', 'actual_completion',
-    'estimated_manhours', 'actual_manhours', 'percent_complete', 'product']
-  const esc = (v) => `"${String(v ?? '').replaceAll('"', '""')}"`
-  const lines = [cols.join(',')]
-  for (const r of rows) {
-    lines.push(cols.map((c) => esc(r[c])).join(','))
-  }
-  return lines.join('\n')
-}
-
-export function downloadCSV(rows, name = 'requests.csv') {
-  const blob = new Blob([toCSV(rows)], { type: 'text/csv' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = name
-  a.click()
-  URL.revokeObjectURL(a.href)
+// Export visible rows to .xlsx (SheetJS). columns = DataGrid column defs.
+export async function exportXLSX(headers, data, filename = 'export.xlsx') {
+  const XLSX = await import('xlsx')
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data])
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Data')
+  XLSX.writeFile(wb, filename)
 }

@@ -7,16 +7,18 @@ import { RequestGrid, StatusBadge, Flags } from '../components/ui'
 import { fmtDate } from '../lib/meta'
 
 const title    = { key: 'title',    label: 'Title',    render: (r) => <span className="ctitle" title={r.title}>{r.title}</span> }
-const status   = { key: 'status',   label: 'Status',   render: (r) => <StatusBadge status={r.status} /> }
-const priority = { key: 'priority', label: 'Priority', render: (r) => r.priority }
-const requestor = { key: 'requestor_name', label: 'Requestor', render: (r) => r.requestor_name }
+const status   = { key: 'status',   label: 'Status',   render: (r) => <StatusBadge status={r.status} />, text: (r) => r.status ?? '' }
+const priority = { key: 'priority', label: 'Priority', render: (r) => r.priority ?? '—' }
+const requestor = { key: 'requestor_name', label: 'Requestor', render: (r) => r.requestor_name ?? '—' }
 const assigned = { key: 'assigned_to', label: 'Assigned to', render: (r) => r.assigned_to ?? '—' }
 const project  = { key: 'project_name', label: 'Project', render: (r) => r.project_name ?? '—' }
 const golive   = { key: 'golive_required', label: 'Due',
-  render: (r) => <span className="mono">{fmtDate(r.golive_required)}</span> }
+  render: (r) => <span className="mono">{fmtDate(r.golive_required)}</span>,
+  text: (r) => fmtDate(r.golive_required) }
 const expStart = { key: 'expected_start', label: 'Start',
-  render: (r) => <span className="mono">{fmtDate(r.expected_start)}</span> }
-const flags    = { key: 'flags', label: '', sortKey: 'status', render: (r) => <Flags r={r} /> }
+  render: (r) => <span className="mono">{fmtDate(r.expected_start)}</span>,
+  text: (r) => fmtDate(r.expected_start) }
+const flags    = { key: 'flags', label: '', noFilter: true, noSort: true, render: (r) => <Flags r={r} /> }
 
 const FILTERS = ['Open', 'Not Started', 'In Progress', 'Waiting', 'Deferred', 'Completed', 'Overdue', 'All']
 
