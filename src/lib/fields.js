@@ -1,5 +1,5 @@
 // ============================================================
-// SharePoint column mapping — app field  ->  real internal name
+// SharePoint column mapping — app field -> real internal name
 // ------------------------------------------------------------
 // Target list: "Tasks" (shared with the PowerApps app
 // "Inventor Project Tasks Lite v4"). Column internal names below
@@ -8,29 +8,36 @@
 // strings. Person/lookup columns (AssignedTo, Project, Tag) need
 // special handling and are wired in a later pass — verify their
 // exact Graph names at /diag first.
+//
+// NOTE: Supervisor/Approver has moved to the Projects list.
+// Supervisor_ID is no longer read or written at the Task level.
 // ============================================================
 
 export const REQUEST_FIELDS = {
   // --- confident, plain columns ---
-  title: 'Title',                  // text  (display: "Task Name")
-  status: 'Status',                // choice -> string
-  priority: 'Priority',            // choice -> string
-  request_type: 'Task_Type',       // choice -> string
-  expected_start: 'StartDate',     // date
-  golive_required: 'DueDate',      // date  (nearest "required by")
-  actual_completion: 'Actual_x0020_End', // date
-  estimated_manhours: 'Budget_Hours',    // number
-  actual_manhours: 'Billed_Hours',       // number
-  percent_complete: 'PercentComplete',   // number
-  product: 'Product',              // text
-  requestor_notes: 'Body',         // text  (display: "Description")
-  implementor_notes: 'Notes',      // html
-  approver_email: 'Supervisor_ID', // text column reused to store approver (manager name)
+  title: 'Title',                          // text (display: "Task Name")
+  status: 'Status',                        // choice -> string
+  priority: 'Priority',                    // choice -> string
+  request_type: 'Task_Type',               // choice -> string
+  expected_start: 'StartDate',             // date
+  golive_required: 'DueDate',             // date (nearest "required by")
+  actual_completion: 'Actual_x0020_End',   // date
+  estimated_manhours: 'Budget_Hours',      // number
+  actual_manhours: 'Billed_Hours',         // number
+  percent_complete: 'PercentComplete',     // number
+  product: 'Product',                      // text
+  requestor_notes: 'Body',                 // text (display: "Description")
+  implementor_notes: 'Notes',             // html
+
+  // --- REMOVED: approver_email was Supervisor_ID on the Task.
+  // The Supervisor now lives on the Project, not individual Tasks.
+  // Kept as __none_ so existing references return null without errors.
+  approver_email: '__none_approver_email',
 
   // --- person / lookup: resolved in Phase 2 (names confirmed at /diag) ---
-  assigned_to_id: 'AssignedToLookupId',  // person  (verify)
-  project_id: 'ProjectLookupId',         // lookup  (verify)
-  tag_id: 'TagLookupId',                 // lookup  (verify)
+  assigned_to_id: 'AssignedToLookupId',   // person (verify)
+  project_id: 'ProjectLookupId',          // lookup (verify)
+  tag_id: 'TagLookupId',                  // lookup (verify)
 
   // --- SyncTask concepts with NO column in Tasks yet ---
   // Kept so the UI never references an undefined key; they read as
@@ -58,7 +65,7 @@ export const toSP = (appFields) => {
   const out = {}
   for (const [k, v] of Object.entries(appFields)) {
     const col = REQUEST_FIELDS[k]
-    if (!col || col.startsWith('__none_')) continue  // never write phantom columns
+    if (!col || col.startsWith('__none_')) continue // never write phantom columns
     if (col.endsWith('LookupId')) {
       out[col] = v === '' || v == null ? null : Number(v)
     } else {
@@ -75,12 +82,12 @@ export const fromSP = (item) => {
     r[k] = col.startsWith('__none_') ? null : (f[col] ?? null)
   }
   if (r.coo_prioritization == null) r.coo_prioritization = 99999999
-  r.requestor_name = item.createdBy?.user?.displayName ?? ''
-  r.requestor_email = item.createdBy?.user?.email ?? ''
-  r.created_by = item.createdBy?.user?.displayName ?? ''
-  r.modified_by = item.lastModifiedBy?.user?.displayName ?? ''
-  r.request_date = (item.createdDateTime ?? '').slice(0, 10)
-  r.created_at = item.createdDateTime
-  r.modified_at = item.lastModifiedDateTime
+  r.requestor_name  = item.createdBy?.user?.displayName ?? ''
+  r.requestor_email = item.createdBy?.user?.email       ?? ''
+  r.created_by      = item.createdBy?.user?.displayName ?? ''
+  r.modified_by     = item.lastModifiedBy?.user?.displayName ?? ''
+  r.request_date    = (item.createdDateTime ?? '').slice(0, 10)
+  r.created_at      = item.createdDateTime
+  r.modified_at     = item.lastModifiedDateTime
   return r
 }

@@ -1,11 +1,12 @@
 import { LISTS, listItems, getItem, createItem, updateItemFields, deleteItem, getSiteUsers, getListColumns } from './sp'
 import { fetchRequests } from './api'
 
-// app field  ->  SharePoint internal column (Projects list)
+// app field -> SharePoint internal column (Projects list)
 const F = {
   title: 'Title',
-  owner_id: 'OwnerLookupId',     // person
-  status: 'OData__Status',       // choice — READ name (Graph OData-escapes a leading underscore)
+  owner_id: 'OwnerLookupId',              // person — project owner (requestor / "αιτών")
+  supervisor_id: 'Supervisor_IDLookupId', // person — supervisor/approver (manager who signs off)
+  status: 'OData__Status',               // choice — READ name (Graph OData-escapes leading underscore)
   start_date: 'Start_Date',
   end_date: 'End_Date',
   proposed_start: 'Proposed_Start',
@@ -15,9 +16,7 @@ const F = {
   notes: 'Notes',
 }
 
-// The status column's internal name differs between Graph READ (OData__Status)
-// and WRITE (the true internal name, e.g. _Status). Resolve the write name from
-// the live column list so we never guess.
+// Status write-name resolver — Graph reads as OData__Status but writes need the real internal name.
 let _statusWriteColP = null
 function statusWriteCol() {
   return (_statusWriteColP ??= getListColumns(LISTS.projects)
@@ -32,23 +31,33 @@ function statusWriteCol() {
 
 const fromSP = (item, users) => {
   const f = item.fields ?? {}
-  const ownerId = f[F.owner_id]
+  const ownerId      = f[F.owner_id]
+  const supervisorId = f[F.supervisor_id]
+  const ownerUser      = users.get(String(ownerId))
+  const supervisorUser = users.get(String(supervisorId))
   return {
     id: String(item.id),
     title: f[F.title] ?? '',
-    owner_id: ownerId != null ? String(ownerId) : '',
-    owner: users.get(String(ownerId))?.title ?? '',
-    status: f['OData__Status'] ?? f['_Status'] ?? f['OData_Status'] ?? f.Status ?? '',
-    start_date: (f[F.start_date] ?? '').slice(0, 10),
-    end_date: (f[F.end_date] ?? '').slice(0, 10),
+    // Owner
+    owner_id:    ownerId      != null ? String(ownerId)      : '',
+    owner:       ownerUser?.title ?? '',
+    owner_email: (ownerUser?.email ?? '').toLowerCase(),
+    // Supervisor (approver)
+    supervisor_id:    supervisorId != null ? String(supervisorId) : '',
+    supervisor:       supervisorUser?.title ?? '',
+    supervisor_email: (supervisorUser?.email ?? '').toLowerCase(),
+    // Status & dates
+    status:         f['OData__Status'] ?? f['_Status'] ?? f['OData_Status'] ?? f.Status ?? '',
+    start_date:     (f[F.start_date]    ?? '').slice(0, 10),
+    end_date:       (f[F.end_date]      ?? '').slice(0, 10),
     proposed_start: (f[F.proposed_start] ?? '').slice(0, 10),
-    deadline: (f[F.deadline] ?? '').slice(0, 10),
+    deadline:       (f[F.deadline]      ?? '').slice(0, 10),
     product: f[F.product] ?? '',
-    link: f[F.link] ?? '',
-    notes: f[F.notes] ?? '',
-    created_at: item.createdDateTime,
+    link:    f[F.link]    ?? '',
+    notes:   f[F.notes]   ?? '',
+    created_at:  item.createdDateTime,
     modified_at: item.lastModifiedDateTime,
-    created_by: item.createdBy?.user?.displayName ?? '',
+    created_by:  item.createdBy?.user?.displayName  ?? '',
     modified_by: item.lastModifiedBy?.user?.displayName ?? '',
   }
 }
@@ -56,11 +65,11 @@ const fromSP = (item, users) => {
 async function toSP(fields) {
   const out = {}
   for (const [k, col] of Object.entries(F)) {
-    if (k === 'status') continue                 // handled separately (write-name differs)
+    if (k === 'status') continue // handled separately (write-name differs)
     if (!(k in fields)) continue
     let v = fields[k]
     if (v === '' || v == null) { if (k !== 'title') continue; v = '' }
-    out[col] = k === 'owner_id' ? Number(v) : v
+    out[col] = (k === 'owner_id' || k === 'supervisor_id') ? Number(v) : v
   }
   if ('status' in fields && fields.status !== '' && fields.status != null) {
     out[await statusWriteCol()] = fields.status
@@ -92,15 +101,17 @@ export async function removeProject(id) {
   await deleteItem(LISTS.projects, id)
 }
 
-// 1-to-many: the tasks whose Project lookup points at this project.
+// 1-to-many: tasks whose Project lookup points at this project.
 export async function fetchProjectTasks(projectId) {
   const all = await fetchRequests()
   return all.filter((r) => String(r.project_id) === String(projectId))
 }
 
-// Distinct existing project statuses, so the form offers real choices.
+// Distinct existing project statuses for the form dropdown.
 export async function fetchProjectStatuses() {
   const projects = await fetchProjects()
   const set = [...new Set(projects.map((p) => p.status).filter(Boolean))]
-  return set.length ? set : ['Not Started', 'In Progress', 'Completed', 'On Hold']
+  return set.length
+    ? set
+    : ['Waiting Manager Approval', 'Not Started', 'In Progress', 'Completed', 'On Hold', 'Deferred']
 }

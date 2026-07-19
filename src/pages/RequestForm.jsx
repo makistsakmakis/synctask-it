@@ -4,23 +4,28 @@ import { useSession } from '../App'
 import { fmtDateTime } from '../lib/meta'
 import { DateInput } from '../components/ui'
 import {
-  fetchManagers, fetchRequest, createRequest, updateRequest,
+  fetchRequest, createRequest, updateRequest,
   fetchProjectOptions, fetchTagOptions, fetchUserOptions,
 } from '../lib/api'
 
-// Field-level edit rights, mapped onto the shared "Tasks" list.
+// Field-level edit rights for Tasks, mapped onto the shared "Tasks" list.
+// Owner (requestor) and Supervisor (manager): READ-ONLY on tasks.
+// Implementor (resource): can update execution fields.
+// Admin (COO): all fields.
+// NOTE: approver_email has been removed — supervisor lives on the Project now.
 const RIGHTS = {
-  requestor: ['title', 'approver_email', 'golive_required', 'requestor_notes', 'request_type', 'priority', 'project_id', 'tag_id', 'expected_start', 'assigned_to_id'],
-  manager: ['title', 'status', 'approver_email', 'golive_required', 'request_type', 'priority', 'management_notes', 'project_id', 'tag_id', 'assigned_to_id', 'expected_start', 'actual_completion', 'percent_complete', 'estimated_manhours', 'actual_manhours'],
-  resource: ['status', 'expected_start', 'actual_completion', 'percent_complete', 'estimated_manhours', 'actual_manhours', 'implementor_notes', 'project_id', 'tag_id'],
-  admin: null, // all fields
+  requestor: [], // view only
+  manager:   [], // view only
+  resource: ['status', 'expected_start', 'actual_completion', 'percent_complete',
+             'estimated_manhours', 'actual_manhours', 'implementor_notes', 'project_id', 'tag_id'],
+  admin: null,   // all fields
 }
 
 const STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed', 'Deferred', 'Waiting']
 const DATE_KEYS = ['golive_required', 'expected_start', 'actual_completion']
 
 const EMPTY = {
-  title: '', status: '', approver_email: '', golive_required: '', request_type: '', priority: '',
+  title: '', status: '', golive_required: '', request_type: '', priority: '',
   requestor_notes: '', management_notes: '', implementor_notes: '', coo_notes: '',
   expected_start: '', actual_completion: '', estimated_manhours: '', actual_manhours: '',
   percent_complete: '', assigned_to_id: '', project_id: '', tag_id: '',
@@ -32,33 +37,35 @@ export default function RequestForm() {
   const { profile, effectiveRole } = useSession()
   const editing = Boolean(id)
   const [searchParams] = useSearchParams()
-  const [managers, setManagers] = useState([])
-  const [userOpts, setUserOpts] = useState([])
+  const [userOpts, setUserOpts]     = useState([])
   const [projectOpts, setProjectOpts] = useState([])
-  const [tagOpts, setTagOpts] = useState([])
+  const [tagOpts, setTagOpts]       = useState([])
   const [form, setForm] = useState({ ...EMPTY, status: 'Not Started', priority: 'Low' })
   const [audit, setAudit] = useState(null)
   const [requestDate, setRequestDate] = useState(new Date().toISOString().slice(0, 10))
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [error, setError]   = useState('')
+  const [busy, setBusy]     = useState(false)
+
+  const isReadOnly = RIGHTS[effectiveRole]?.length === 0
 
   useEffect(() => {
-    fetchManagers().then(setManagers).catch(() => setManagers([]))
     fetchUserOptions().then(setUserOpts).catch(() => setUserOpts([]))
     fetchProjectOptions().then(setProjectOpts).catch(() => setProjectOpts([]))
     fetchTagOptions().then(setTagOpts).catch(() => setTagOpts([]))
   }, [])
 
-  // New task: prefill project (from query) and default the assignee to the current user.
+  // New task: prefill project (from query) and default the assignee to the current user (admin only).
   useEffect(() => {
     if (editing || userOpts.length === 0) return
-    const me = userOpts.find((u) => u.email && u.email === (profile.email ?? '').toLowerCase())
-    setForm((f) => ({
-      ...f,
-      assigned_to_id: f.assigned_to_id || (me ? me.id : ''),
-      project_id: f.project_id || (searchParams.get('project') ?? ''),
-    }))
-  }, [userOpts, editing])
+    if (effectiveRole === 'admin') {
+      const me = userOpts.find((u) => u.email && u.email === (profile.email ?? '').toLowerCase())
+      setForm((f) => ({
+        ...f,
+        assigned_to_id: f.assigned_to_id || (me ? me.id : ''),
+        project_id: f.project_id || (searchParams.get('project') ?? ''),
+      }))
+    }
+  }, [userOpts, editing, effectiveRole])
 
   useEffect(() => {
     if (!editing) return
@@ -85,14 +92,15 @@ export default function RequestForm() {
     if (end && start && end < start) return 'Actual End must be on or after the Actual Start Date.'
     if (due && end && due < end) return 'Due date must be on or after the Actual End.'
     if (form.estimated_manhours !== '' && Number(form.estimated_manhours) < 0) return 'Estimated man-hours must be ≥ 0.'
-    if (form.actual_manhours !== '' && Number(form.actual_manhours) < 0) return 'Billed hours must be ≥ 0.'
-    if (form.percent_complete !== '' && (Number(form.percent_complete) < 0 || Number(form.percent_complete) > 100))
+    if (form.actual_manhours    !== '' && Number(form.actual_manhours)    < 0) return 'Billed hours must be ≥ 0.'
+    if (form.percent_complete   !== '' && (Number(form.percent_complete) < 0 || Number(form.percent_complete) > 100))
       return '% Complete must be between 0 and 100.'
     return ''
   }
 
   const NUM = new Set(['estimated_manhours', 'actual_manhours', 'percent_complete'])
   const save = async () => {
+    if (isReadOnly) return // should never happen — button is hidden
     const v = validate()
     if (v) { setError(v); return }
     setBusy(true); setError('')
@@ -103,20 +111,28 @@ export default function RequestForm() {
     }
     try {
       const target = editing ? (await updateRequest(id, payload), id)
-                             : await createRequest(payload, profile)
+        : await createRequest(payload, profile)
       nav(`/requests/${target}`)
     } catch (e) {
       setError(e.message ?? 'Unexpected error occurred. Please try again.')
     } finally { setBusy(false) }
   }
 
+  // If read-only role opens the edit URL, redirect to detail view
+  if (isReadOnly && !editing) {
+    nav('/requests', { replace: true })
+    return null
+  }
+
   return (
     <>
       <div className="pagehead">
         <div>
-          <h1>{editing ? 'Edit task' : 'New task'}</h1>
+          <h1>{editing ? (isReadOnly ? 'View task' : 'Edit task') : 'New task'}</h1>
           <div className="sub">
-            {editing ? 'Fields outside your role’s edit rights are locked.' : 'New tasks default to status “Not Started”.'}
+            {isReadOnly ? 'You can view this task but cannot edit it.'
+              : editing ? 'Fields outside your role's edit rights are locked.'
+              : 'New tasks default to status "Not Started".'}
           </div>
         </div>
       </div>
@@ -124,7 +140,7 @@ export default function RequestForm() {
       <div className="card" style={{ padding: 18 }}>
         <div className="form">
           <label className="f wide">
-            <span className="k">Title <em>*</em></span>
+            <span className="k">Title {!isReadOnly && <em>*</em>}</span>
             <input value={form.title} onChange={set('title')} disabled={!allowed('title')} maxLength={140} />
           </label>
           <label className="f">
@@ -135,29 +151,9 @@ export default function RequestForm() {
             </select>
           </label>
           <label className="f">
-            <span className="k">Approver</span>
-            <select value={form.approver_email} onChange={set('approver_email')} disabled={!allowed('approver_email')}>
-              <option value="">Select a manager…</option>
-              {managers.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
-            </select>
-          </label>
-          <label className="f">
             <span className="k">Status</span>
             <select value={form.status} onChange={set('status')} disabled={!allowed('status')}>
               {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
-            </select>
-          </label>
-          <label className="f">
-            <span className="k">Priority <em>*</em></span>
-            <select value={form.priority} onChange={set('priority')} disabled={!allowed('priority')}>
-              <option>Low</option><option>Medium</option><option>High</option>
-            </select>
-          </label>
-          <label className="f">
-            <span className="k">Type <em>*</em></span>
-            <select value={form.request_type} onChange={set('request_type')} disabled={!allowed('request_type')}>
-              <option value="">Select…</option>
-              <option>Bug Fix</option><option>New Implementation</option><option>Change Request</option>
             </select>
           </label>
           <label className="f">
@@ -224,10 +220,14 @@ export default function RequestForm() {
         )}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
-          <button className="btn" onClick={() => nav(-1)} disabled={busy}>Discard</button>
-          <button className="btn primary" onClick={save} disabled={busy}>
-            {busy ? 'Saving…' : editing ? 'Save changes' : 'Create task'}
+          <button className="btn" onClick={() => nav(-1)} disabled={busy}>
+            {isReadOnly ? 'Back' : 'Discard'}
           </button>
+          {!isReadOnly && (
+            <button className="btn primary" onClick={save} disabled={busy}>
+              {busy ? 'Saving…' : editing ? 'Save changes' : 'Create task'}
+            </button>
+          )}
         </div>
       </div>
     </>

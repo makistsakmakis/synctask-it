@@ -59,17 +59,17 @@ export function fetchResources() {
 
 // ---------- shaping ----------
 async function shape(item) {
-  const [managers, , u, projects, tags] =
+  const [, , u, projects, tags] =
     await Promise.all([fetchManagers(), fetchResources(), users(), projectMap(), tagMap()])
   const r = fromSP(item)
 
-  const approverName = (r.approver_email ?? '').trim()
-  r.approver = managers.find((m) => m.name === approverName)
-    ?? (approverName ? { name: approverName, email: '', division: { name: '' } } : null)
+  // Supervisor (approver) now lives on the Project, not the Task.
+  // approver_email is __none_ in REQUEST_FIELDS so r.approver_email === null.
+  r.approver = null
 
   // AssignedTo (person) → name/email via the site users map.
   const who = u.get(String(r.assigned_to_id))
-  r.assigned_to = who?.title ?? null
+  r.assigned_to       = who?.title ?? null
   r.assigned_to_email = who?.email ?? ''
   // Keep the implementors shape the rest of the UI expects (single assignee).
   r.implementors = r.assigned_to_email
@@ -77,7 +77,7 @@ async function shape(item) {
     : []
 
   r.project_name = projects.get(String(r.project_id)) ?? null
-  r.tag_name = tags.get(String(r.tag_id)) ?? null
+  r.tag_name     = tags.get(String(r.tag_id))         ?? null
   return r
 }
 
@@ -119,9 +119,6 @@ export async function createRequest(fields, profile) {
     ...fields,
     status: fields.status || 'Not Started',
   }))
-  // Reference number only if the Tasks list actually has a column for it.
-  // (It currently doesn't, so this is skipped — a Power Automate flow can
-  // still populate one server-side.)
   const refCol = REQUEST_FIELDS.reference_number
   if (refCol && !refCol.startsWith('__none_')) {
     const ref = `ITR-${new Date().toISOString().slice(0, 10)}-${String(created.id).padStart(6, '0')}`

@@ -16,7 +16,13 @@ import Diag from './pages/Diag'
 const SessionCtx = createContext(null)
 export const useSession = () => useContext(SessionCtx)
 
-const ROLE_LABEL = { requestor: 'Requestor', manager: 'Manager', resource: 'Implementor', admin: 'Admin / COO' }
+// Role labels:
+//   requestor → Owner    (ανοίγει projects, βλέπει view-only tasks)
+//   manager   → Supervisor (εγκρίνει projects, βλέπει view-only tasks)
+//   resource  → Implementor (εκτελεί tasks)
+//   admin     → Admin / COO (πλήρης έλεγχος)
+const ROLE_LABEL = { requestor: 'Owner', manager: 'Supervisor', resource: 'Implementor', admin: 'Admin / COO' }
+
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS ?? '')
   .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
 
@@ -32,18 +38,22 @@ function Shell({ children }) {
           {profile.email}<br />{ROLE_LABEL[role]}{previewRole ? ' (preview)' : ''}
         </div>
         <nav>
+          {/* Tasks Overview: admin only */}
           {role === 'admin' && <NavLink to="/overview/tasks">Tasks Overview</NavLink>}
-          <NavLink to="/overview/projects">Projects Overview</NavLink>
+          {/* Projects Overview: admin only (kanban/dashboard) */}
+          {role === 'admin' && <NavLink to="/overview/projects">Projects Overview</NavLink>}
+          {/* Tasks list: all roles — Owner/Supervisor see it read-only, Implementor sees assigned tasks */}
           <NavLink to="/requests" end>Tasks</NavLink>
-          <NavLink to="/projects">Projects</NavLink>
+          {/* Projects list: Owner, Supervisor, Admin */}
+          {role !== 'resource' && <NavLink to="/projects">Projects</NavLink>}
         </nav>
         {profile.role === 'admin' && (
           <label className="f" style={{ marginTop: 14 }}>
             <span className="k" style={{ color: '#9aa1ad', fontSize: 11 }}>Role preview</span>
             <select value={previewRole ?? ''} onChange={(e) => setPreviewRole(e.target.value || null)}>
               <option value="">Admin (me)</option>
-              <option value="requestor">Requestor</option>
-              <option value="manager">Manager</option>
+              <option value="requestor">Owner</option>
+              <option value="manager">Supervisor</option>
               <option value="resource">Implementor</option>
             </select>
           </label>
@@ -58,8 +68,8 @@ function Shell({ children }) {
 }
 
 export default function App() {
-  const [account, setAccount] = useState(undefined)
-  const [profile, setProfile] = useState(null)
+  const [account, setAccount]     = useState(undefined)
+  const [profile, setProfile]     = useState(null)
   const [loadError, setLoadError] = useState('')
   const [previewRole, setPreviewRole] = useState(null)
 
@@ -69,16 +79,19 @@ export default function App() {
     if (!account) { setProfile(null); return }
     const email = (account.username ?? '').toLowerCase()
     const base = { id: account.localAccountId, email, name: account.name ?? email }
-    // Role derivation: SuperUser flag or env → admin; Managers list or Is_Manager
-    // flag → manager; Is_Implementor (or any Resources row) → implementor; else requestor.
+    // Role derivation:
+    //   SuperUser flag or env → admin (COO)
+    //   Managers list or Is_Manager flag → manager (Supervisor)
+    //   Is_Implementor (or any Resources row) → resource (Implementor)
+    //   else → requestor (Owner)
     Promise.all([fetchManagers(), fetchResources()])
       .then(([managers, resources]) => {
         const meMgr = managers.find((m) => m.email === email)
         const meRes = resources.find((r) => r.email === email)
         const role =
           ADMIN_EMAILS.includes(email) || meRes?.is_superuser ? 'admin'
-          : meMgr || meRes?.is_manager ? 'manager'
-          : meRes ? 'resource'
+          : meMgr || meRes?.is_manager                        ? 'manager'
+          : meRes                                             ? 'resource'
           : 'requestor'
         setProfile({ ...base, role })
       })
@@ -113,9 +126,9 @@ export default function App() {
       <BrowserRouter>
         <Shell>
           <Routes>
-            <Route path="/" element={<Navigate to={profile.role === 'admin' ? '/overview/tasks' : '/requests'} replace />} />
+            <Route path="/" element={<Navigate to={profile.role === 'admin' ? '/overview/tasks' : profile.role === 'resource' ? '/requests' : '/projects'} replace />} />
             <Route path="/overview/tasks" element={profile.role === 'admin' ? <TasksOverview /> : <Navigate to="/overview/projects" replace />} />
-            <Route path="/overview/projects" element={<ProjectsOverview />} />
+            <Route path="/overview/projects" element={profile.role === 'admin' ? <ProjectsOverview /> : <Navigate to="/projects" replace />} />
             <Route path="/requests" element={<RequestsPage />} />
             <Route path="/requests/new" element={<RequestForm />} />
             <Route path="/requests/:id" element={<RequestDetail />} />
@@ -124,7 +137,7 @@ export default function App() {
             <Route path="/projects/new" element={<ProjectForm />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="/projects/:id/edit" element={<ProjectForm />} />
-            {/* Legacy URLs from the old 4-page layout */}
+            {/* Legacy URLs */}
             <Route path="/dashboard" element={<Navigate to="/overview/tasks" replace />} />
             <Route path="/dashboard/projects" element={<Navigate to="/overview/projects" replace />} />
             <Route path="/kanban" element={<Navigate to="/overview/tasks" replace />} />

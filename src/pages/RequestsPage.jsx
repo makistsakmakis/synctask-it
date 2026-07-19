@@ -2,65 +2,101 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fetchRequests } from '../lib/api'
+import { fetchProjects } from '../lib/projects'
 import { RequestGrid, StatusBadge, Flags } from '../components/ui'
 import { fmtDate } from '../lib/meta'
 
-const title = { key: 'title', label: 'Title', render: (r) => <span className="ctitle" title={r.title}>{r.title}</span> }
-const status = { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> }
+const title    = { key: 'title',    label: 'Title',    render: (r) => <span className="ctitle" title={r.title}>{r.title}</span> }
+const status   = { key: 'status',   label: 'Status',   render: (r) => <StatusBadge status={r.status} /> }
 const priority = { key: 'priority', label: 'Priority', render: (r) => r.priority }
 const requestor = { key: 'requestor_name', label: 'Requestor', render: (r) => r.requestor_name }
-const approver = { key: 'approver', label: 'Approver', sortKey: 'approver', render: (r) => r.approver?.name }
 const assigned = { key: 'assigned_to', label: 'Assigned to', render: (r) => r.assigned_to ?? '—' }
-const golive = { key: 'golive_required', label: 'Due',
+const project  = { key: 'project_name', label: 'Project', render: (r) => r.project_name ?? '—' }
+const golive   = { key: 'golive_required', label: 'Due',
   render: (r) => <span className="mono">{fmtDate(r.golive_required)}</span> }
 const expStart = { key: 'expected_start', label: 'Start',
   render: (r) => <span className="mono">{fmtDate(r.expected_start)}</span> }
-const flags = { key: 'flags', label: '', sortKey: 'status', render: (r) => <Flags r={r} /> }
+const flags    = { key: 'flags', label: '', sortKey: 'status', render: (r) => <Flags r={r} /> }
 
 const FILTERS = ['Open', 'Not Started', 'In Progress', 'Waiting', 'Deferred', 'Completed', 'Overdue', 'All']
 
 const VIEWS = {
   requestor: {
-    title: 'My tasks', sub: 'Tasks you have submitted.',
+    title: 'My project tasks', sub: 'Tasks under your projects (view only).',
     filters: FILTERS,
-    columns: [title, status, approver, assigned, priority, golive, expStart, flags],
+    columns: [title, project, status, assigned, priority, golive, expStart, flags],
   },
   manager: {
-    title: 'My tasks & approvals', sub: 'Tasks you submitted or that need your approval.',
+    title: 'Supervised project tasks', sub: 'Tasks under projects you supervise (view only).',
     filters: FILTERS,
-    columns: [title, requestor, status, approver, assigned, priority, golive, flags],
+    columns: [title, project, requestor, status, assigned, priority, golive, flags],
   },
   resource: {
     title: 'Assigned to me', sub: 'Tasks assigned to you.',
     filters: FILTERS,
-    columns: [title, status, priority, expStart, requestor, approver, flags],
+    columns: [title, project, status, priority, expStart, requestor, flags],
   },
   admin: {
     title: 'Tasks', sub: 'Full operational list of tasks.',
     filters: FILTERS,
-    columns: [title, requestor, approver, assigned, status, priority, golive, expStart, flags],
+    columns: [title, requestor, assigned, project, status, priority, golive, expStart, flags],
   },
 }
 
 export default function RequestsPage() {
   const { profile, effectiveRole } = useSession()
   const nav = useNavigate()
-  const [rows, setRows] = useState([])
+  const [rows, setRows]         = useState([])
+  const [projects, setProjects] = useState([])
   const view = VIEWS[effectiveRole] ?? VIEWS.requestor
+  const me = (profile.email ?? '').toLowerCase()
 
-  useEffect(() => { fetchRequests().then(setRows).catch(console.error) }, [])
+  useEffect(() => {
+    fetchRequests().then(setRows).catch(console.error)
+    // Owner and Supervisor need the project list to scope tasks
+    if (effectiveRole === 'requestor' || effectiveRole === 'manager') {
+      fetchProjects().then(setProjects).catch(console.error)
+    }
+  }, [effectiveRole])
 
-  // RLS already scopes rows server-side. Role preview narrows the admin's
-  // full dataset client-side to simulate each screen (§15, UI simulation only).
   const scoped = useMemo(() => {
-    if (profile.role !== 'admin' || effectiveRole === 'admin') return rows
-    const me = profile.email.toLowerCase()
-    if (effectiveRole === 'requestor') return rows.filter((r) => r.requestor_email?.toLowerCase() === me)
-    if (effectiveRole === 'manager')
-      return rows.filter((r) => r.requestor_email?.toLowerCase() === me
-        || r.approver?.email?.toLowerCase() === me)
-    return rows.filter((r) => (r.implementors ?? []).some((i) => i.resource?.email?.toLowerCase() === me))
-  }, [rows, profile, effectiveRole])
+    // Admin: all tasks
+    if (effectiveRole === 'admin') return rows
+
+    // Owner (requestor): only tasks under their own projects
+    if (effectiveRole === 'requestor') {
+      const myProjectIds = new Set(
+        projects.filter((p) => p.owner_email === me).map((p) => p.id)
+      )
+      return rows.filter((r) => myProjectIds.has(String(r.project_id)))
+    }
+
+    // Supervisor (manager): only tasks under supervised projects
+    if (effectiveRole === 'manager') {
+      const myProjectIds = new Set(
+        projects.filter((p) => p.supervisor_email === me).map((p) => p.id)
+      )
+      return rows.filter((r) => myProjectIds.has(String(r.project_id)))
+    }
+
+    // Implementor (resource): only tasks assigned to them
+    if (effectiveRole === 'resource') {
+      return rows.filter((r) =>
+        (r.implementors ?? []).some((i) => i.resource?.email?.toLowerCase() === me)
+      )
+    }
+
+    return rows
+  }, [rows, projects, effectiveRole, me])
+
+  // Role preview simulation for admin
+  const previewScoped = useMemo(() => {
+    if (profile.role !== 'admin' || effectiveRole === 'admin') return scoped
+    return scoped // Already filtered above via effectiveRole
+  }, [scoped, profile, effectiveRole])
+
+  // Only Admin (COO) can create new tasks
+  const canCreate = effectiveRole === 'admin'
 
   return (
     <>
@@ -69,10 +105,17 @@ export default function RequestsPage() {
           <h1>{view.title}</h1>
           <div className="sub">{view.sub}</div>
         </div>
-        <button className="btn primary" onClick={() => nav('/requests/new')}>New task</button>
+        {canCreate && (
+          <button className="btn primary" onClick={() => nav('/requests/new')}>New task</button>
+        )}
       </div>
-      <RequestGrid rows={scoped} columns={view.columns} filters={view.filters}
-        emptyHint="No requests in this view yet. Create one to get started." />
+      <RequestGrid rows={previewScoped} columns={view.columns} filters={view.filters}
+        emptyHint={
+          effectiveRole === 'requestor' ? 'No tasks under your projects yet.'
+          : effectiveRole === 'manager'  ? 'No tasks under your supervised projects yet.'
+          : effectiveRole === 'resource' ? 'No tasks assigned to you yet.'
+          : 'No tasks yet.'
+        } />
     </>
   )
 }
