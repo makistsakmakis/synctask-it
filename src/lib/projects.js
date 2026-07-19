@@ -18,17 +18,19 @@ const F = {
 }
 
 // ── RACI columns ───────────────────────────────────────────────────────────────
-// Default fallback keys (Graph API multi-value lookup item key = internalName + 'LookupId')
+// Graph API returns multi-value lookups as:
+//   READ  → f['Responsible'] = [{LookupId: 4, LookupValue: "CFO"}, ...]  (base name, array of objects)
+//   WRITE → { 'ResponsibleLookupId@odata.type': 'Collection(Edm.Int32)', 'ResponsibleLookupId': [4, 3] }
+//
+// RACI_COLS_DEFAULT stores the BASE internal column name (no 'LookupId' suffix).
+// Write key = base name + 'LookupId'.
 const RACI_COLS_DEFAULT = {
-  responsible_ids: 'ResponsibleLookupId',
-  accountable_ids: 'AccountableLookupId',
-  consulted_ids:   'ConsultedLookupId',
-  informed_ids:    'InformedLookupId',
+  responsible_ids: 'Responsible',
+  accountable_ids: 'Accountable',
+  consulted_ids:   'Consulted',
+  informed_ids:    'Informed',
 }
 
-// Auto-detect actual RACI column Graph-item keys from the SharePoint list schema.
-// Falls back to defaults if detection fails.
-// Search terms are tried against both the displayName and the internal name (case-insensitive).
 const RACI_SEARCH = {
   responsible_ids: ['responsible'],
   accountable_ids: ['accountable'],
@@ -46,7 +48,7 @@ function getRaciColKeys() {
         const cn = (c.name ?? '').toLowerCase()
         return terms.some((t) => dn.includes(t) || cn.includes(t))
       })
-      if (hit) result[key] = hit.name + 'LookupId'
+      if (hit) result[key] = hit.name  // base name only; 'LookupId' appended on write
     }
     console.log('[RACI cols detected]', result)
     return result
@@ -113,15 +115,16 @@ const fromSP = (item, users, resMap = new Map(), raciKeys = RACI_COLS_DEFAULT) =
       const decoded = raw.replace(/<[^>]*>/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).trim()
       return decoded.startsWith('data:image/') ? decoded : ''
     })(),
-    // RACI — IDs (for form state) and resolved names (for display)
-    responsible_ids: (f[raciKeys.responsible_ids] ?? []).map(String),
-    accountable_ids: (f[raciKeys.accountable_ids] ?? []).map(String),
-    consulted_ids:   (f[raciKeys.consulted_ids]   ?? []).map(String),
-    informed_ids:    (f[raciKeys.informed_ids]     ?? []).map(String),
-    responsible: resolveIds(f[raciKeys.responsible_ids], resMap),
-    accountable: resolveIds(f[raciKeys.accountable_ids], resMap),
-    consulted:   resolveIds(f[raciKeys.consulted_ids],   resMap),
-    informed:    resolveIds(f[raciKeys.informed_ids],     resMap),
+    // RACI — multi-value lookup: [{LookupId: N, LookupValue: "Name"}, ...]
+    // IDs used for form state (write), LookupValue used for display
+    responsible_ids: (f[raciKeys.responsible_ids] ?? []).map((x) => String(x?.LookupId ?? x)).filter(Boolean),
+    accountable_ids: (f[raciKeys.accountable_ids] ?? []).map((x) => String(x?.LookupId ?? x)).filter(Boolean),
+    consulted_ids:   (f[raciKeys.consulted_ids]   ?? []).map((x) => String(x?.LookupId ?? x)).filter(Boolean),
+    informed_ids:    (f[raciKeys.informed_ids]     ?? []).map((x) => String(x?.LookupId ?? x)).filter(Boolean),
+    responsible: (f[raciKeys.responsible_ids] ?? []).map((x) => x?.LookupValue ?? resMap.get(String(x?.LookupId ?? x)) ?? '').filter(Boolean),
+    accountable: (f[raciKeys.accountable_ids] ?? []).map((x) => x?.LookupValue ?? resMap.get(String(x?.LookupId ?? x)) ?? '').filter(Boolean),
+    consulted:   (f[raciKeys.consulted_ids]   ?? []).map((x) => x?.LookupValue ?? resMap.get(String(x?.LookupId ?? x)) ?? '').filter(Boolean),
+    informed:    (f[raciKeys.informed_ids]     ?? []).map((x) => x?.LookupValue ?? resMap.get(String(x?.LookupId ?? x)) ?? '').filter(Boolean),
     created_at:  item.createdDateTime,
     modified_at: item.lastModifiedDateTime,
     created_by:  item.createdBy?.user?.displayName  ?? '',
@@ -139,12 +142,13 @@ async function toSP(fields) {
     if (v === '' || v == null) { if (k !== 'title') continue; v = '' }
     out[col] = (k === 'owner_id' || k === 'supervisor_id') ? Number(v) : v
   }
-  // RACI multi-value lookup fields — use auto-detected column keys
-  for (const [k, col] of Object.entries(raciKeys)) {
+  // RACI multi-value lookup fields — write key = base name + 'LookupId'
+  for (const [k, baseCol] of Object.entries(raciKeys)) {
     if (!(k in fields)) continue
     const ids = (fields[k] ?? []).map(Number).filter(Boolean)
-    out[col + '@odata.type'] = 'Collection(Edm.Int32)'
-    out[col] = ids
+    const writeCol = baseCol + 'LookupId'
+    out[writeCol + '@odata.type'] = 'Collection(Edm.Int32)'
+    out[writeCol] = ids
   }
   if ('status' in fields && fields.status !== '' && fields.status != null) {
     out[await statusWriteCol()] = fields.status
