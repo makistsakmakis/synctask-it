@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime } from '../lib/meta'
@@ -10,19 +10,40 @@ import { fetchUserOptions, fetchManagers } from '../lib/api'
 // null = all fields editable.
 const PROJECT_RIGHTS = {
   // Owner (requestor): can create/edit project details but not change status or assign supervisor
-  requestor: ['title', 'product', 'link', 'notes', 'proposed_start', 'deadline'],
+  requestor: ['title', 'product', 'link', 'notes', 'proposed_start', 'deadline', 'icon'],
   // Supervisor (manager): can approve (change status) and see all fields; cannot change owner
-  manager: ['status', 'supervisor_id', 'start_date', 'end_date', 'notes'],
+  manager: ['status', 'supervisor_id', 'start_date', 'end_date', 'notes', 'icon'],
   // Implementors: read-only on projects
   resource: [],
   // COO: all fields
   admin: null,
 }
 
+// Resize an image file to max dimensions and return a base64 data URL
+function resizeToDataURL(file, maxPx = 96) {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const scale = Math.min(maxPx / img.width, maxPx / img.height, 1)
+        const w = Math.round(img.width * scale)
+        const h = Math.round(img.height * scale)
+        const canvas = document.createElement('canvas')
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        resolve(canvas.toDataURL('image/png'))
+      }
+      img.src = e.target.result
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
 const EMPTY = {
   title: '', owner_id: '', supervisor_id: '', status: '',
   start_date: '', end_date: '', proposed_start: '', deadline: '',
-  product: '', link: '', notes: '',
+  product: '', link: '', notes: '', icon: '',
 }
 const DATE_KEYS = ['start_date', 'end_date', 'proposed_start', 'deadline']
 const pick = (p) => Object.fromEntries(Object.keys(EMPTY).map((k) =>
@@ -40,6 +61,15 @@ export default function ProjectForm() {
   const [audit, setAudit] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const iconRef = useRef(null)
+
+  const handleIcon = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const dataUrl = await resizeToDataURL(file, 96)
+    setForm((f) => ({ ...f, icon: dataUrl }))
+    e.target.value = '' // reset so same file can be re-selected
+  }
 
   const allowed = (f) => {
     const rights = PROJECT_RIGHTS[effectiveRole]
@@ -139,6 +169,26 @@ export default function ProjectForm() {
             <input value={form.title} onChange={set('title')} placeholder="Project name"
               disabled={!allowed('title')} />
           </label>
+          <div className="f">
+            <span className="k" style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, display: 'block' }}>Project icon</span>
+            <div className="proj-icon-upload">
+              <input ref={iconRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleIcon} />
+              {form.icon
+                ? <img src={form.icon} alt="icon" className="proj-icon-preview"
+                    onClick={() => allowed('icon') && iconRef.current?.click()}
+                    title={allowed('icon') ? 'Click to change' : undefined} />
+                : allowed('icon') && (
+                  <div className="proj-icon-placeholder" onClick={() => iconRef.current?.click()} title="Upload icon">＋</div>
+                )}
+              {form.icon && allowed('icon') && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <button type="button" className="btn sm" onClick={() => iconRef.current?.click()}>Change</button>
+                  <button type="button" className="btn sm danger" onClick={() => setForm((f) => ({ ...f, icon: '' }))}>Remove</button>
+                </div>
+              )}
+              {!form.icon && !allowed('icon') && <span style={{ color: '#9aa1ad', fontSize: 13 }}>—</span>}
+            </div>
+          </div>
           <label className="f">
             <span className="k">Owner {effectiveRole === 'admin' && <em>*</em>}</span>
             <select value={form.owner_id} onChange={set('owner_id')}

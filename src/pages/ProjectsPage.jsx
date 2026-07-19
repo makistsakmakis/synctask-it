@@ -87,7 +87,12 @@ export default function ProjectsPage() {
                 <tbody>
                   {visible.map((p) => (
                     <tr key={p.id} onClick={() => nav(`/projects/${p.id}`)}>
-                      <td><span className="ctitle" title={p.title}>{p.title}</span></td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {p.icon && <img src={p.icon} alt="" className="proj-icon" />}
+                          <span className="ctitle" title={p.title}>{p.title}</span>
+                        </div>
+                      </td>
                       <td>{p.owner || '—'}</td>
                       <td>{p.supervisor || '—'}</td>
                       <td>{p.status || '—'}</td>

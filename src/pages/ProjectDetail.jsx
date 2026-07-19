@@ -44,9 +44,12 @@ export default function ProjectDetail() {
   return (
     <>
       <div className="pagehead">
-        <div>
-          <h1>{p.title}</h1>
-          <div className="sub">{p.status || 'No status'} · Owner: {p.owner || '—'}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {p.icon && <img src={p.icon} alt="" className="proj-icon-lg" />}
+          <div>
+            <h1>{p.title}</h1>
+            <div className="sub">{p.status || 'No status'} · Owner: {p.owner || '—'}</div>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn" onClick={() => nav(`/requests/new?project=${id}`)}>New task</button>

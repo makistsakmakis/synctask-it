@@ -32,7 +32,7 @@ function Shell({ children }) {
   return (
     <div className="shell">
       <aside className="side">
-        <div className="brand">Sync<span>Task</span> IT</div>
+        <img src="/syncflow-logo.png" alt="SyncFlow" className="side-logo" />
         <div className="who">
           <b>{profile.name}</b>
           {profile.email}<br />{ROLE_LABEL[role]}{previewRole ? ' (preview)' : ''}

@@ -14,6 +14,7 @@ const F = {
   product: 'Product',
   link: 'Link',
   notes: 'Notes',
+  icon: 'Project_Icon',                   // multi-line text — base64 data URL of project icon
 }
 
 // Status write-name resolver — Graph reads as OData__Status but writes need the real internal name.
@@ -55,6 +56,7 @@ const fromSP = (item, users) => {
     product: f[F.product] ?? '',
     link:    f[F.link]    ?? '',
     notes:   f[F.notes]   ?? '',
+    icon:    f[F.icon]    ?? '',
     created_at:  item.createdDateTime,
     modified_at: item.lastModifiedDateTime,
     created_by:  item.createdBy?.user?.displayName  ?? '',
