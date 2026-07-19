@@ -51,8 +51,12 @@ const fromSP = (item, users) => {
     deadline:       (f[F.deadline]      ?? '').slice(0, 10),
     product: f[F.product] ?? '',
     link:    f[F.link]    ?? '',
-    notes:   typeof f[F.notes] === 'string' ? f[F.notes].replace(/<[^>]*>/g, '') : '',
-    icon:    typeof f[F.icon]  === 'string' && f[F.icon].startsWith('data:image/') ? f[F.icon] : '',
+    notes:   f[F.notes] ?? '',
+    icon:    (() => {
+      const raw = typeof f[F.icon] === 'string' ? f[F.icon] : ''
+      const decoded = raw.replace(/<[^>]*>/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).trim()
+      return decoded.startsWith('data:image/') ? decoded : ''
+    })(),
     created_at:  item.createdDateTime,
     modified_at: item.lastModifiedDateTime,
     created_by:  item.createdBy?.user?.displayName  ?? '',
