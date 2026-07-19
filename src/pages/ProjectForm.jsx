@@ -152,7 +152,7 @@ export default function ProjectForm() {
             <select value={form.supervisor_id} onChange={set('supervisor_id')}
               disabled={!allowed('supervisor_id')}>
               <option value="">Select supervisor…</option>
-              {managers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              {managers.map((m) => <option key={m.id} value={m.person_id}>{m.name}</option>)}
             </select>
           </label>
           <label className="f">

@@ -39,7 +39,8 @@ export function fetchManagers() {
   return (_managersP ??= Promise.all([listItems(LISTS.managers), users()]).then(([items, u]) =>
     items.map((i) => ({
       id: String(i.id),
-      name: i.fields?.[MANAGER_FIELDS.name] ?? '',
+      person_id: String(i.fields?.[MANAGER_FIELDS.person_id] ?? ''), // site user ID of the manager person
+      name: i.fields?.[MANAGER_FIELDS.name] ?? '',                   // role title e.g. "COO"
       email: emailOf(u, i.fields?.[MANAGER_FIELDS.person_id]),
     }))))
 }
