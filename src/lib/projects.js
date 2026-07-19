@@ -4,9 +4,9 @@ import { fetchRequests } from './api'
 // app field -> SharePoint internal column (Projects list)
 const F = {
   title: 'Title',
-  owner_id: 'OwnerLookupId',              // person — project owner (requestor / "αιτών")
-  supervisor_id: 'Supervisor_IDLookupId', // person — supervisor/approver (manager who signs off)
-  status: 'OData__Status',               // choice — READ name (Graph OData-escapes leading underscore)
+  owner_id: 'OwnerLookupId',
+  supervisor_id: 'Supervisor_IDLookupId',
+  status: 'OData__Status',
   start_date: 'Start_Date',
   end_date: 'End_Date',
   proposed_start: 'Proposed_Start',
@@ -14,10 +14,9 @@ const F = {
   product: 'Product',
   link: 'Link',
   notes: 'Notes',
-  icon: 'Project_Icon',                   // multi-line text — base64 data URL of project icon
+  icon: 'Project_Icon',
 }
 
-// Status write-name resolver — Graph reads as OData__Status but writes need the real internal name.
 let _statusWriteColP = null
 function statusWriteCol() {
   return (_statusWriteColP ??= getListColumns(LISTS.projects)
@@ -36,20 +35,15 @@ const fromSP = (item, users) => {
   const supervisorId = f[F.supervisor_id]
   const ownerUser      = users.get(String(ownerId))
   const supervisorUser = users.get(String(supervisorId))
-  const rawIcon = f[F.icon]
-  console.log('[fromSP] Project_Icon raw type:', typeof rawIcon, '| starts with data:image:', String(rawIcon).startsWith('data:image'), '| length:', String(rawIcon ?? '').length)
   return {
     id: String(item.id),
     title: f[F.title] ?? '',
-    // Owner
     owner_id:    ownerId      != null ? String(ownerId)      : '',
     owner:       ownerUser?.title ?? '',
     owner_email: (ownerUser?.email ?? '').toLowerCase(),
-    // Supervisor (approver)
     supervisor_id:    supervisorId != null ? String(supervisorId) : '',
     supervisor:       supervisorUser?.title ?? '',
     supervisor_email: (supervisorUser?.email ?? '').toLowerCase(),
-    // Status & dates
     status:         f['OData__Status'] ?? f['_Status'] ?? f['OData_Status'] ?? f.Status ?? '',
     start_date:     (f[F.start_date]    ?? '').slice(0, 10),
     end_date:       (f[F.end_date]      ?? '').slice(0, 10),
@@ -57,8 +51,8 @@ const fromSP = (item, users) => {
     deadline:       (f[F.deadline]      ?? '').slice(0, 10),
     product: f[F.product] ?? '',
     link:    f[F.link]    ?? '',
-    notes:   f[F.notes]   ?? '',
-    icon:    typeof rawIcon === 'string' && rawIcon.startsWith('data:image/') ? rawIcon : '',
+    notes:   typeof f[F.notes] === 'string' ? f[F.notes].replace(/<[^>]*>/g, '') : '',
+    icon:    typeof f[F.icon]  === 'string' && f[F.icon].startsWith('data:image/') ? f[F.icon] : '',
     created_at:  item.createdDateTime,
     modified_at: item.lastModifiedDateTime,
     created_by:  item.createdBy?.user?.displayName  ?? '',
@@ -69,7 +63,7 @@ const fromSP = (item, users) => {
 async function toSP(fields) {
   const out = {}
   for (const [k, col] of Object.entries(F)) {
-    if (k === 'status') continue // handled separately (write-name differs)
+    if (k === 'status') continue
     if (!(k in fields)) continue
     let v = fields[k]
     if (v === '' || v == null) { if (k !== 'title') continue; v = '' }
@@ -78,7 +72,6 @@ async function toSP(fields) {
   if ('status' in fields && fields.status !== '' && fields.status != null) {
     out[await statusWriteCol()] = fields.status
   }
-  console.log('[toSP] keys:', Object.keys(out), '| Project_Icon length:', out['Project_Icon']?.length ?? 'not set')
   return out
 }
 
@@ -94,7 +87,15 @@ export async function fetchProject(id) {
 }
 
 export async function createProject(fields) {
-  const created = await createItem(LISTS.projects, await toSP(fields))
+  // Create without icon first (Graph POST may ignore unknown/new fields),
+  // then PATCH the icon separately to guarantee it's written.
+  const sp = await toSP(fields)
+  const icon = sp[F.icon]
+  delete sp[F.icon]
+  const created = await createItem(LISTS.projects, sp)
+  if (icon) {
+    await updateItemFields(LISTS.projects, String(created.id), { [F.icon]: icon })
+  }
   return String(created.id)
 }
 
@@ -106,13 +107,11 @@ export async function removeProject(id) {
   await deleteItem(LISTS.projects, id)
 }
 
-// 1-to-many: tasks whose Project lookup points at this project.
 export async function fetchProjectTasks(projectId) {
   const all = await fetchRequests()
   return all.filter((r) => String(r.project_id) === String(projectId))
 }
 
-// Distinct existing project statuses for the form dropdown.
 export async function fetchProjectStatuses() {
   const projects = await fetchProjects()
   const set = [...new Set(projects.map((p) => p.status).filter(Boolean))]

@@ -69,7 +69,7 @@ export default function Diag() {
                 <tr key={c.id} style={{ cursor: 'default' }}>
                   <td>{c.displayName}</td>
                   <td className="mono">{c.name}</td>
-                  <td>{c.text ? 'text' : c.dateTime ? 'date' : c.number ? 'number' : c.choice ? 'choice' : c.personOrGroup ? 'person' : '—'}</td>
+                  <td>{c.text ? (c.text.allowMultipleLines ? 'text (multi-line ✓)' : 'text (single-line ⚠️)') : c.dateTime ? 'date' : c.number ? 'number' : c.choice ? 'choice' : c.personOrGroup ? 'person' : '—'}</td>
                   <td>{list === LISTS.requests && mapped.has(c.name) ? '✓ mapped' : ''}</td>
                 </tr>
               ))}
