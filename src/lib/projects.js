@@ -56,7 +56,7 @@ const fromSP = (item, users) => {
     product: f[F.product] ?? '',
     link:    f[F.link]    ?? '',
     notes:   f[F.notes]   ?? '',
-    icon:    f[F.icon]    ?? '',
+    icon:    typeof f[F.icon] === 'string' && f[F.icon].startsWith('data:image/') ? f[F.icon] : '',
     created_at:  item.createdDateTime,
     modified_at: item.lastModifiedDateTime,
     created_by:  item.createdBy?.user?.displayName  ?? '',
