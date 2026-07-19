@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LISTS, getListColumns, getSiteUsers, probeSiteUsers, probeItemFields } from '../lib/sp'
+import { LISTS, getListColumns, getSiteUsers, probeSiteUsers, probeItemFields, testIconWrite } from '../lib/sp'
 import { REQUEST_FIELDS } from '../lib/fields'
 
 const mapped = new Set(Object.values(REQUEST_FIELDS))
@@ -11,6 +11,8 @@ export default function Diag() {
   const [usersErr, setUsersErr] = useState('')
   const [probe, setProbe] = useState(null)
   const [items, setItems] = useState(null)
+  const [iconTest, setIconTest] = useState(null)
+  const [iconTesting, setIconTesting] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -57,6 +59,18 @@ export default function Diag() {
       <div className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ padding: '14px 16px 4px', fontSize: 14 }}>Sample item fields (Projects / Tasks)</h3>
         <pre style={pre}>{items ? JSON.stringify(items, null, 2) : 'Probing…'}</pre>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ padding: '14px 16px 4px', fontSize: 14 }}>Project_Icon write test</h3>
+        <div style={{ padding: '0 16px 14px' }}>
+          <button className="btn primary" disabled={iconTesting} onClick={async () => {
+            setIconTesting(true); setIconTest(null)
+            try { setIconTest(await testIconWrite()) } catch (e) { setIconTest({ fatal: e.message }) }
+            setIconTesting(false)
+          }}>{iconTesting ? 'Testing…' : 'Run test write → read back'}</button>
+          {iconTest && <pre style={{ ...pre, marginTop: 10 }}>{JSON.stringify(iconTest, null, 2)}</pre>}
+        </div>
       </div>
 
       {Object.entries(data).map(([list, cols]) => (

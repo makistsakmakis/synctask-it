@@ -194,12 +194,36 @@ export async function probeItemFields() {
   for (const [label, list] of [['Projects', LISTS.projects], ['Tasks', LISTS.requests]]) {
     try {
       const lid = await getListId(list)
-      const res = await g(`/sites/${sid}/lists/${lid}/items?expand=fields&$top=1&$orderby=Modified%20desc`)
+      const res = await g(`/sites/${sid}/lists/${lid}/items?expand=fields&$top=1&$orderby=lastModifiedDateTime%20desc`)
       const it = (res.value ?? [])[0]
       out[label] = it ? { keys: Object.keys(it.fields ?? {}), fields: it.fields } : { empty: true }
     } catch (e) { out[label] = { error: e.message } }
   }
   return out
+}
+
+// Directly test writing and reading back Project_Icon on the most recent project.
+export async function testIconWrite() {
+  const sid = await getSiteId()
+  const lid = await getListId(LISTS.projects)
+  const res = await g(`/sites/${sid}/lists/${lid}/items?expand=fields&$top=1&$orderby=lastModifiedDateTime%20desc`)
+  const item = (res.value ?? [])[0]
+  if (!item) return { error: 'No projects found' }
+  const itemId = item.id
+  const testVal = 'data:image/png;base64,' + 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk'.repeat(40)
+  try {
+    await g(`/sites/${sid}/lists/${lid}/items/${itemId}/fields`, { method: 'PATCH', body: { Project_Icon: testVal } })
+  } catch (e) { return { itemId, writeError: e.message } }
+  const check = await g(`/sites/${sid}/lists/${lid}/items/${itemId}?expand=fields`)
+  const readBack = check?.fields?.Project_Icon ?? null
+  return {
+    itemId,
+    title: item.fields?.Title,
+    written_length: testVal.length,
+    readBack_length: readBack?.length ?? 0,
+    readBack_start: readBack?.slice(0, 40) ?? '(null)',
+    match: readBack === testVal,
+  }
 }
 
 // Generic id -> Title map for a lookup target list (e.g. Projects, Tags).
