@@ -66,6 +66,77 @@ export function Flags({ r }) {
   )
 }
 
+// ── RichTextEditor dialog ─────────────────────────────────────────────────────
+// Opens as an overlay. html = initial HTML string. onSave(html) / onClose().
+export function RichTextEditor({ html, title = 'Σημειώσεις', onSave, onClose }) {
+  const editorRef = useRef(null)
+
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = html || ''
+      editorRef.current.focus()
+    }
+  }, [])
+
+  const exec = (cmd, val) => {
+    editorRef.current?.focus()
+    document.execCommand(cmd, false, val ?? null)
+  }
+
+  const addLink = (e) => {
+    e.preventDefault()
+    const url = window.prompt('URL:')
+    if (url) { editorRef.current?.focus(); document.execCommand('createLink', false, url) }
+  }
+
+  const TB = [
+    { label: <b>B</b>, title: 'Bold',         cmd: 'bold' },
+    { label: <i>I</i>, title: 'Italic',        cmd: 'italic' },
+    { label: <u>U</u>, title: 'Underline',     cmd: 'underline' },
+    { label: <s>S</s>, title: 'Strikethrough', cmd: 'strikeThrough' },
+  ]
+
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="rte-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="rte-header">
+          <span>{title}</span>
+          <button className="rte-close" onClick={onClose} title="Κλείσιμο">✕</button>
+        </div>
+        <div className="rte-toolbar">
+          {TB.map(({ label, title: t, cmd }) => (
+            <button key={cmd} className="rte-btn" title={t}
+              onMouseDown={(e) => { e.preventDefault(); exec(cmd) }}>{label}</button>
+          ))}
+          <span className="rte-sep" />
+          <button className="rte-btn" title="Επικεφαλίδα H2"
+            onMouseDown={(e) => { e.preventDefault(); exec('formatBlock', 'h2') }}>H2</button>
+          <button className="rte-btn" title="Επικεφαλίδα H3"
+            onMouseDown={(e) => { e.preventDefault(); exec('formatBlock', 'h3') }}>H3</button>
+          <button className="rte-btn" title="Παράγραφος"
+            onMouseDown={(e) => { e.preventDefault(); exec('formatBlock', 'p') }}>¶</button>
+          <span className="rte-sep" />
+          <button className="rte-btn" title="Λίστα με κουκκίδες"
+            onMouseDown={(e) => { e.preventDefault(); exec('insertUnorderedList') }}>• Λίστα</button>
+          <button className="rte-btn" title="Αριθμημένη λίστα"
+            onMouseDown={(e) => { e.preventDefault(); exec('insertOrderedList') }}>1. Λίστα</button>
+          <span className="rte-sep" />
+          <button className="rte-btn" title="Εισαγωγή link" onMouseDown={addLink}>🔗 Link</button>
+          <button className="rte-btn rte-btn-danger" title="Καθαρισμός μορφοποίησης"
+            onMouseDown={(e) => { e.preventDefault(); exec('removeFormat') }}>Clear</button>
+        </div>
+        <div ref={editorRef} className="rte-body" contentEditable suppressContentEditableWarning />
+        <div className="rte-footer">
+          <button className="btn" onClick={onClose}>Ακύρωση</button>
+          <button className="btn primary" onClick={() => onSave(editorRef.current?.innerHTML ?? '')}>
+            Αποθήκευση
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── DataGrid ──────────────────────────────────────────────────────────────────
 // Excel-like column filtering (dropdown checkboxes), sorting, clear-filters,
 // and Export to Excel. Column spec: { key, label, render, text?, noFilter?, noSort? }

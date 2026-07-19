@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useSession } from '../App'
-import { fmtDateTime } from '../lib/meta'
-import { DateInput } from '../components/ui'
+import { fmtDateTime, sanitizeHtml } from '../lib/meta'
+import { DateInput, RichTextEditor } from '../components/ui'
 import {
   fetchRequest, createRequest, updateRequest,
   fetchProjectOptions, fetchTagOptions, fetchUserOptions,
@@ -45,6 +45,7 @@ export default function RequestForm() {
   const [requestDate, setRequestDate] = useState(new Date().toISOString().slice(0, 10))
   const [error, setError]   = useState('')
   const [busy, setBusy]     = useState(false)
+  const [rteField, setRteField] = useState(null) // 'requestor_notes' | 'implementor_notes'
 
   const isReadOnly = RIGHTS[effectiveRole]?.length === 0
 
@@ -194,16 +195,31 @@ export default function RequestForm() {
             <span className="k">Billed hours</span>
             <input type="number" min="0" step="0.5" value={form.actual_manhours} onChange={set('actual_manhours')} disabled={!allowed('actual_manhours')} />
           </label>
-          <label className="f wide">
-            <span className="k">Requestor notes</span>
-            <textarea value={form.requestor_notes} onChange={set('requestor_notes')}
-              disabled={!allowed('requestor_notes')} placeholder="Describe what is needed and why." />
-          </label>
-          {allowed('implementor_notes') && (
-            <label className="f wide">
-              <span className="k">Implementor notes</span>
-              <textarea value={form.implementor_notes} onChange={set('implementor_notes')} />
-            </label>
+          <div className="f wide">
+            <span className="k" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              Requestor notes
+              {allowed('requestor_notes') && (
+                <button type="button" className="btn sm" onClick={() => setRteField('requestor_notes')}>Edit</button>
+              )}
+            </span>
+            <div
+              className="notes-preview"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.requestor_notes) || '<span class="notes-empty">—</span>' }}
+            />
+          </div>
+          {(allowed('implementor_notes') || form.implementor_notes) && (
+            <div className="f wide">
+              <span className="k" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                Implementor notes
+                {allowed('implementor_notes') && (
+                  <button type="button" className="btn sm" onClick={() => setRteField('implementor_notes')}>Edit</button>
+                )}
+              </span>
+              <div
+                className="notes-preview"
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.implementor_notes) || '<span class="notes-empty">—</span>' }}
+              />
+            </div>
           )}
         </div>
 
@@ -230,6 +246,15 @@ export default function RequestForm() {
           )}
         </div>
       </div>
+
+      {rteField && (
+        <RichTextEditor
+          html={form[rteField]}
+          title={rteField === 'requestor_notes' ? 'Requestor notes' : 'Implementor notes'}
+          onSave={(html) => { setForm((f) => ({ ...f, [rteField]: html })); setRteField(null) }}
+          onClose={() => setRteField(null)}
+        />
+      )}
     </>
   )
 }

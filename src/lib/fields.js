@@ -82,6 +82,14 @@ export const fromSP = (item) => {
     r[k] = col.startsWith('__none_') ? null : (f[col] ?? null)
   }
   if (r.coo_prioritization == null) r.coo_prioritization = 99999999
+
+  // implementor_notes maps to the 'Notes' rich-text column — decode SharePoint HTML wrapper
+  if (typeof r.implementor_notes === 'string' && r.implementor_notes) {
+    const dec = r.implementor_notes.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    const m = dec.match(/^<div[^>]*class="ExternalClass[^"]*"[^>]*>([\s\S]*)<\/div>\s*$/i)
+    r.implementor_notes = m ? m[1].trim() : dec.trim()
+  }
+
   r.requestor_name  = item.createdBy?.user?.displayName ?? ''
   r.requestor_email = item.createdBy?.user?.email       ?? ''
   r.created_by      = item.createdBy?.user?.displayName ?? ''
