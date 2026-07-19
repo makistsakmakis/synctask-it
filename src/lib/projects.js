@@ -1,4 +1,4 @@
-import { LISTS, listItems, getItem, createItem, updateItemFields, deleteItem, getSiteUsers, getListColumns } from './sp'
+import { LISTS, listItems, getItem, createItem, updateItemFields, deleteItem, getSiteUsers, getListColumns, getSiteId, getListId, g } from './sp'
 import { fetchRequests } from './api'
 
 // app field -> SharePoint internal column (Projects list)
@@ -15,6 +15,24 @@ const F = {
   link: 'Link',
   notes: 'Notes',
   icon: 'Project_Icon',                   // multi-line text — base64 data URL of project icon
+}
+
+// Ensure Project_Icon column exists in SharePoint (auto-creates if missing). Cached per session.
+let _iconColP = null
+async function ensureIconColumn() {
+  return (_iconColP ??= (async () => {
+    const cols = await getListColumns(LISTS.projects)
+    if (cols.some((c) => c.name === 'Project_Icon')) return true
+    try {
+      const sid = await getSiteId()
+      const lid = await getListId(LISTS.projects)
+      await g(`/sites/${sid}/lists/${lid}/columns`, {
+        method: 'POST',
+        body: { name: 'Project_Icon', displayName: 'Project Icon', text: { allowMultipleLines: true, linesForEditing: 10 } },
+      })
+      return true
+    } catch { return false }
+  })())
 }
 
 // Status write-name resolver — Graph reads as OData__Status but writes need the real internal name.
@@ -91,12 +109,33 @@ export async function fetchProject(id) {
 }
 
 export async function createProject(fields) {
-  const created = await createItem(LISTS.projects, await toSP(fields))
+  // Strip icon from the initial POST — Graph silently ignores unknown fields on item creation,
+  // so we save the icon via a separate PATCH after the item exists.
+  const sp = await toSP(fields)
+  const icon = sp.Project_Icon
+  delete sp.Project_Icon
+  const created = await createItem(LISTS.projects, sp)
+  if (icon) {
+    const ready = await ensureIconColumn()
+    if (ready) {
+      await updateItemFields(LISTS.projects, String(created.id), { Project_Icon: icon }).catch(() => {})
+    }
+  }
   return String(created.id)
 }
 
 export async function updateProject(id, fields) {
-  await updateItemFields(LISTS.projects, id, await toSP(fields))
+  const sp = await toSP(fields)
+  if ('Project_Icon' in sp) {
+    const ready = await ensureIconColumn()
+    if (!ready) {
+      // Column doesn't exist and couldn't be auto-created — save project without icon and warn.
+      delete sp.Project_Icon
+      await updateItemFields(LISTS.projects, id, sp)
+      throw new Error('Project saved, but the icon could not be stored. Please add a "Multiple lines of text" column named "Project Icon" to the Projects list in SharePoint, then try again.')
+    }
+  }
+  await updateItemFields(LISTS.projects, id, sp)
 }
 
 export async function removeProject(id) {
