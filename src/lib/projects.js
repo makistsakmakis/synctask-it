@@ -51,7 +51,10 @@ const fromSP = (item, users) => {
     deadline:       (f[F.deadline]      ?? '').slice(0, 10),
     product: f[F.product] ?? '',
     link:    f[F.link]    ?? '',
-    notes:   f[F.notes] ?? '',
+    notes:   (() => {
+      const raw = typeof f[F.notes] === 'string' ? f[F.notes] : ''
+      return raw.replace(/<[^>]*>/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).trim()
+    })(),
     icon:    (() => {
       const raw = typeof f[F.icon] === 'string' ? f[F.icon] : ''
       const decoded = raw.replace(/<[^>]*>/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).trim()
@@ -117,9 +120,15 @@ export async function fetchProjectTasks(projectId) {
 }
 
 export async function fetchProjectStatuses() {
+  try {
+    const cols = await getListColumns(LISTS.projects)
+    const statusCol = cols.find((c) => c.name === '_Status' || c.name === 'OData__Status')
+    if (statusCol?.choice?.choices?.length) return statusCol.choice.choices
+  } catch {}
+  // fallback: derive from existing project data
   const projects = await fetchProjects()
   const set = [...new Set(projects.map((p) => p.status).filter(Boolean))]
   return set.length
     ? set
-    : ['Waiting Manager Approval', 'Not Started', 'In Progress', 'Completed', 'On Hold', 'Deferred']
+    : ['Waiting Manager Approval', 'Not Started', 'In Progress', 'Completed', 'On Hold', 'Deferred', 'Waiting on someone else']
 }

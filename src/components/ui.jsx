@@ -48,7 +48,8 @@ export function DateInput({ value, onChange, disabled }) {
 }
 
 export function StatusBadge({ status }) {
-  const c = STATUS_COLOR[status]
+  if (!status) return <span className="mono" style={{ color: 'var(--text-muted)' }}>—</span>
+  const c = STATUS_COLOR[status] ?? 'var(--text-muted)'
   return (
     <span className="badge" style={{ background: `color-mix(in srgb, ${c} 12%, white)`, color: c }}>
       <i style={{ background: c }} /> {status}

@@ -4,6 +4,7 @@ import { useSession } from '../App'
 import { fetchProjects } from '../lib/projects'
 import { fetchRequests } from '../lib/api'
 import { fmtDate } from '../lib/meta'
+import { StatusBadge } from '../components/ui'
 
 export default function ProjectsPage() {
   const nav = useNavigate()
@@ -95,7 +96,7 @@ export default function ProjectsPage() {
                       </td>
                       <td>{p.owner || '—'}</td>
                       <td>{p.supervisor || '—'}</td>
-                      <td>{p.status || '—'}</td>
+                      <td><StatusBadge status={p.status} /></td>
                       <td>{p.product || '—'}</td>
                       <td className="mono">{fmtDate(p.start_date)}</td>
                       <td className="mono">{fmtDate(p.deadline)}</td>

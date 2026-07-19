@@ -2,11 +2,16 @@
 export const STATUSES = ['Not Started', 'In Progress', 'Waiting', 'Deferred', 'Completed']
 
 export const STATUS_COLOR = {
+  // Task statuses
   'Not Started': 'var(--st-planned)',
   'In Progress': 'var(--st-inprocess)',
   Waiting: 'var(--st-onhold)',
   Deferred: 'var(--st-cancelled)',
   Completed: 'var(--st-completed)',
+  // Project statuses
+  'Waiting Manager Approval': 'var(--st-onhold)',
+  'Waiting on someone else': 'var(--st-onhold)',
+  'On Hold': 'var(--st-cancelled)',
 }
 
 // "Open" = anything not finished. Overdue/Assigned use real Tasks columns:
