@@ -14,28 +14,7 @@ const F = {
   product: 'Product',
   link: 'Link',
   notes: 'Notes',
-  // icon is embedded inside the Notes column — see parseNotes / serializeNotes
-}
-
-// The icon is stored at the end of the Notes field separated by this sentinel.
-// Using a string that will never appear in normal user text.
-const ICON_SEP = '[[[SYNCFLOW_ICON]]]'
-
-function parseNotes(raw) {
-  const s = typeof raw === 'string' ? raw : ''
-  const idx = s.indexOf(ICON_SEP)
-  if (idx === -1) return { notes: s, icon: '' }
-  const icon = s.slice(idx + ICON_SEP.length)
-  return {
-    notes: s.slice(0, idx),
-    icon: icon.startsWith('data:image/') ? icon : '',
-  }
-}
-
-function serializeNotes(notes, icon) {
-  const n = typeof notes === 'string' ? notes : ''
-  const i = typeof icon === 'string' && icon.startsWith('data:image/') ? icon : ''
-  return i ? n + ICON_SEP + i : n
+  icon: 'Project_Icon',                   // multi-line text — base64 data URL of project icon
 }
 
 // Status write-name resolver — Graph reads as OData__Status but writes need the real internal name.
@@ -57,7 +36,8 @@ const fromSP = (item, users) => {
   const supervisorId = f[F.supervisor_id]
   const ownerUser      = users.get(String(ownerId))
   const supervisorUser = users.get(String(supervisorId))
-  const { notes, icon } = parseNotes(f[F.notes])
+  const rawIcon = f[F.icon]
+  console.log('[fromSP] Project_Icon raw type:', typeof rawIcon, '| starts with data:image:', String(rawIcon).startsWith('data:image'), '| length:', String(rawIcon ?? '').length)
   return {
     id: String(item.id),
     title: f[F.title] ?? '',
@@ -77,8 +57,8 @@ const fromSP = (item, users) => {
     deadline:       (f[F.deadline]      ?? '').slice(0, 10),
     product: f[F.product] ?? '',
     link:    f[F.link]    ?? '',
-    notes,
-    icon,
+    notes:   f[F.notes]   ?? '',
+    icon:    typeof rawIcon === 'string' && rawIcon.startsWith('data:image/') ? rawIcon : '',
     created_at:  item.createdDateTime,
     modified_at: item.lastModifiedDateTime,
     created_by:  item.createdBy?.user?.displayName  ?? '',
@@ -90,19 +70,15 @@ async function toSP(fields) {
   const out = {}
   for (const [k, col] of Object.entries(F)) {
     if (k === 'status') continue // handled separately (write-name differs)
-    if (k === 'notes')  continue // handled separately (combined with icon below)
     if (!(k in fields)) continue
     let v = fields[k]
     if (v === '' || v == null) { if (k !== 'title') continue; v = '' }
     out[col] = (k === 'owner_id' || k === 'supervisor_id') ? Number(v) : v
   }
-  // Notes and icon are stored together in the Notes column
-  if ('notes' in fields || 'icon' in fields) {
-    out[F.notes] = serializeNotes(fields.notes ?? '', fields.icon ?? '')
-  }
   if ('status' in fields && fields.status !== '' && fields.status != null) {
     out[await statusWriteCol()] = fields.status
   }
+  console.log('[toSP] keys:', Object.keys(out), '| Project_Icon length:', out['Project_Icon']?.length ?? 'not set')
   return out
 }
 
