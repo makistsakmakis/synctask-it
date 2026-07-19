@@ -44,8 +44,8 @@ function Shell({ children }) {
           {role === 'admin' && <NavLink to="/overview/projects">Projects Overview</NavLink>}
           {/* Tasks list: all roles — Owner/Supervisor see it read-only, Implementor sees assigned tasks */}
           <NavLink to="/requests" end>Tasks</NavLink>
-          {/* Projects list: Owner, Supervisor, Admin */}
-          {role !== 'resource' && <NavLink to="/projects">Projects</NavLink>}
+          {/* Projects list: all roles (resource sees only projects of their tasks) */}
+          <NavLink to="/projects">Projects</NavLink>
         </nav>
         {profile.role === 'admin' && (
           <label className="f" style={{ marginTop: 14 }}>

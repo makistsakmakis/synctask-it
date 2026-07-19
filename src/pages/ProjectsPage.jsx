@@ -2,33 +2,49 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fetchProjects } from '../lib/projects'
+import { fetchRequests } from '../lib/api'
 import { fmtDate } from '../lib/meta'
 
 export default function ProjectsPage() {
   const nav = useNavigate()
   const { profile, effectiveRole } = useSession()
   const [rows, setRows] = useState([])
+  const [myProjectIds, setMyProjectIds] = useState(null) // null = not yet loaded (resource only)
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const me = (profile.email ?? '').toLowerCase()
 
   useEffect(() => {
-    fetchProjects().then(setRows).catch(console.error).finally(() => setLoading(false))
-  }, [])
+    const p1 = fetchProjects().then(setRows).catch(console.error)
+    // For Implementors: also fetch tasks to find which projects they belong to
+    const p2 = effectiveRole === 'resource'
+      ? fetchRequests()
+          .then((reqs) => {
+            const ids = new Set(
+              reqs
+                .filter((r) => (r.assigned_to_email ?? '').toLowerCase() === me)
+                .map((r) => String(r.project_id))
+                .filter(Boolean)
+            )
+            setMyProjectIds(ids)
+          })
+          .catch(() => setMyProjectIds(new Set()))
+      : Promise.resolve()
+    Promise.all([p1, p2]).finally(() => setLoading(false))
+  }, [effectiveRole, me])
 
-  // Visibility: Owner sees only their projects; Supervisor sees only supervised projects;
-  // Admin sees all; Implementor sees all (read-only context for their tasks).
   const scopedRows = rows.filter((p) => {
     if (effectiveRole === 'admin')     return true
     if (effectiveRole === 'requestor') return p.owner_email === me
     if (effectiveRole === 'manager')   return p.supervisor_email === me
-    return true // resource: sees all as context (read-only)
+    // resource: only projects that have at least one task assigned to them
+    if (effectiveRole === 'resource')  return myProjectIds == null ? false : myProjectIds.has(String(p.id))
+    return true
   })
 
   const visible = scopedRows.filter((p) =>
     !q.trim() || `${p.title} ${p.owner} ${p.supervisor} ${p.status} ${p.product}`.toLowerCase().includes(q.toLowerCase()))
 
-  // Only Owner (requestor) and Admin can create projects
   const canCreate = effectiveRole === 'requestor' || effectiveRole === 'admin'
 
   return (
@@ -38,8 +54,8 @@ export default function ProjectsPage() {
           <h1>Projects</h1>
           <div className="sub">
             {effectiveRole === 'requestor' ? 'Your projects.'
-              : effectiveRole === 'manager' ? 'Projects awaiting or under your supervision.'
-              : effectiveRole === 'resource' ? 'All projects (read-only).'
+              : effectiveRole === 'manager' ? 'Projects you supervise.'
+              : effectiveRole === 'resource' ? 'Projects your tasks belong to.'
               : 'All projects.'}
           </div>
         </div>
@@ -58,7 +74,8 @@ export default function ProjectsPage() {
           : visible.length === 0 ? (
             <div className="empty">
               {effectiveRole === 'requestor' ? 'No projects yet. Create one to get started.'
-                : effectiveRole === 'manager' ? 'No projects assigned to you for supervision yet.'
+                : effectiveRole === 'manager' ? 'No projects assigned to you for supervision yet. Ask an admin to set you as Supervisor on a project.'
+                : effectiveRole === 'resource' ? 'No projects found for your assigned tasks.'
                 : 'No projects found.'}
             </div>
           ) : (
