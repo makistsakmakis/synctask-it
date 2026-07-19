@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
+  <defs>
+    <!-- Blue gradient: dark→bright, top-left to bottom-right of blue arc -->
+    <linearGradient id="gB" x1="35" y1="30" x2="155" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#1a4fc4"/>
+      <stop offset="100%" stop-color="#4d9fff"/>
+    </linearGradient>
+    <!-- Teal gradient: dark→bright, top-right to bottom-left of teal arc -->
+    <linearGradient id="gT" x1="155" y1="100" x2="35" y2="172" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#0a8a7c"/>
+      <stop offset="100%" stop-color="#00dac4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ─── BLUE upper arc: starts centre-left, sweeps OVER the top, ends centre-right ─── -->
+  <!-- End tangent direction: (155,30)→(155,72) = straight DOWN → arrowhead points DOWN -->
+  <path d="M 35,110 C 35,30 155,30 155,72"
+        stroke="url(#gB)" stroke-width="20" fill="none" stroke-linecap="butt"/>
+  <!-- Arrowhead (pointing down) at the end of blue arc -->
+  <polygon points="143,60 167,60 155,84" fill="#4d9fff"/>
+
+  <!-- ─── TEAL lower arc: starts centre-right, sweeps UNDER the bottom, ends centre-left ─── -->
+  <!-- End tangent direction: (35,172)→(35,130) = straight UP → arrowhead points UP -->
+  <path d="M 155,92 C 155,172 35,172 35,132"
+        stroke="url(#gT)" stroke-width="20" fill="none" stroke-linecap="butt"/>
+  <!-- Arrowhead (pointing up) at the end of teal arc -->
+  <polygon points="47,144 23,144 35,120" fill="#00dac4"/>
+
+  <!-- ─── Text: "Sync" white  "Flow" blue ─── -->
+  <text x="110" y="208"
+        font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+        font-weight="900" font-size="34" text-anchor="middle" letter-spacing="-0.5">
+    <tspan fill="white">Sync</tspan><tspan fill="#4d9fff">Flow</tspan>
+  </text>
+</svg>
