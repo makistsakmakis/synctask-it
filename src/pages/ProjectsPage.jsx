@@ -78,6 +78,14 @@ export default function ProjectsPage() {
     return true
   }), [rows, effectiveRole, me, myProjectIds])
 
+  // Slicer by status (όπως στα tasks) — δυναμικά από τα διαθέσιμα statuses
+  const chipDefs = useMemo(() => {
+    const ORDER = ['Waiting Manager Approval', 'Not Started', 'In Progress', 'Waiting', 'On Hold', 'Deferred', 'Completed']
+    const present = [...new Set(scopedRows.map((p) => p.status).filter(Boolean))]
+    const ordered = [...ORDER.filter((st) => present.includes(st)), ...present.filter((st) => !ORDER.includes(st))]
+    return { All: () => true, ...Object.fromEntries(ordered.map((st) => [st, (p) => p.status === st])) }
+  }, [scopedRows])
+
   const canCreate = effectiveRole === 'requestor' || effectiveRole === 'admin'
 
   const emptyHint = effectiveRole === 'requestor' ? 'Δεν υπάρχουν ακόμα projects. Δημιουργήστε ένα!'
@@ -110,6 +118,8 @@ export default function ProjectsPage() {
             onRowClick={(p) => nav(`/projects/${p.id}`)}
             emptyHint={emptyHint}
             filename="projects.xlsx"
+            chips={chipDefs}
+            defaultChip="All"
             rowClass={(p) => {
               if (!p.deadline || p.status === 'Completed') return ''
               return new Date(p.deadline) < new Date(new Date().toDateString()) ? 'row-overdue' : ''

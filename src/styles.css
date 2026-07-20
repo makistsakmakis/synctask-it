@@ -326,3 +326,9 @@ input:disabled, select:disabled, textarea:disabled { background: #f3f4f1; color:
 .filterpop-range > label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .filterpop-range-inputs { display: flex; gap: 6px; }
 .filterpop-range-inputs input { padding: 4px 6px; font-size: 12px; }
+
+/* Date filter popup: φαρδύτερο, χωρίς εσωτερικό scroll */
+.filterpop.date { width: 320px; }
+.filterpop.date .filterpop-list { max-height: none; overflow: visible; }
+.filterpop-range > label span { white-space: nowrap; }
+.filterpop-range-inputs input { min-width: 0; flex: 1; }

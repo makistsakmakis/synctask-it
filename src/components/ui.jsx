@@ -311,7 +311,8 @@ export function DataGrid({
   const openColFilter = (colKey, e) => {
     if (openFilter === colKey) { setOpenFilter(null); return }
     const rect = e.currentTarget.getBoundingClientRect()
-    setFilterPos({ top: rect.bottom + 4, left: Math.min(rect.left, window.innerWidth - 248) })
+    const w = columns.find((c) => c.key === colKey)?.ftype === 'date' ? 324 : 248
+    setFilterPos({ top: rect.bottom + 4, left: Math.max(8, Math.min(rect.left, window.innerWidth - w)) })
     setOpenFilter(colKey)
     setFilterSearch('')
   }
@@ -348,23 +349,20 @@ export function DataGrid({
 
   return (
     <>
-      {chips && (
-        <div className="toolbar">
+      {/* Ενιαία γραμμή: slicer + φίλτρα + αναζήτηση + export (χωρίς 2η σειρά) */}
+      <div className="toolbar">
+        {chips && (
           <div className="chips">
             {Object.keys(chips).map((f) => (
               <button key={f} className={'chip' + (f === chip ? ' on' : '')} onClick={() => setChip(f)}>{f}</button>
             ))}
           </div>
-          <div className="spacer" />
-          <input className="search" placeholder="Αναζήτηση…" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-      )}
-      <div className="toolbar">
-        {!chips && <input className="search" placeholder="Αναζήτηση…" value={q} onChange={(e) => setQ(e.target.value)} />}
+        )}
         {hasColFilters && (
           <button className="btn" onClick={clearAllFilters}>✕ Αναίρεση φίλτρων</button>
         )}
         <div className="spacer" />
+        <input className="search" placeholder="Αναζήτηση…" value={q} onChange={(e) => setQ(e.target.value)} />
         <span className="grid-count">{sorted.length} εγγραφές</span>
         <button className="btn" onClick={doExport}>⬇ Export Excel</button>
       </div>
@@ -421,7 +419,7 @@ export function DataGrid({
 
       {/* Filter dropdown — fixed-position to escape table overflow clipping */}
       {openFilter && (
-        <div className="filterpop" ref={popRef} style={{ top: filterPos.top, left: filterPos.left }}>
+        <div className={'filterpop' + (openCol?.ftype === 'date' ? ' date' : '')} ref={popRef} style={{ top: filterPos.top, left: filterPos.left }}>
           {openCol?.ftype === 'text' ? (
             /* Text column: φίλτρο «περιέχει» */
             <div className="filterpop-head">
