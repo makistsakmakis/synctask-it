@@ -185,7 +185,10 @@ export default function RequestForm() {
           </label>
           <label className="f">
             <span className="k">% Complete</span>
-            <input type="number" min="0" max="100" value={form.percent_complete} onChange={set('percent_complete')} disabled={!allowed('percent_complete')} />
+            <input type="number" min="0" max="100" step="10" className="pctbar"
+              value={form.percent_complete} onChange={set('percent_complete')}
+              disabled={!allowed('percent_complete')}
+              style={{ background: `linear-gradient(to right, #cfe6fa ${Math.min(100, Math.max(0, Number(form.percent_complete) || 0))}%, var(--surface) ${Math.min(100, Math.max(0, Number(form.percent_complete) || 0))}%)` }} />
           </label>
           <label className="f">
             <span className="k">Estimated man-hours</span>

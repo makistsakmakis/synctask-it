@@ -15,7 +15,7 @@ const PROJECT_RIGHTS = {
   // Owner (requestor): can create/edit project details but not change status or assign supervisor
   requestor: ['title', 'product', 'link', 'notes', 'proposed_start', 'deadline', 'icon'],
   // Supervisor (manager): can approve (change status), edit RACI
-  manager: ['status', 'supervisor_id', 'start_date', 'end_date', 'notes', 'icon', ...RACI_FIELDS],
+  manager: ['status', 'supervisor_id', 'start_date', 'end_date', 'notes', 'icon'],
   // Implementors: read-only on projects
   resource: [],
   // COO: all fields

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchProject, fetchProjectTasks, removeProject } from '../lib/projects'
+import { fetchResources } from '../lib/api'
 import { RequestGrid, StatusBadge, Flags, ConfirmDialog } from '../components/ui'
 import { fmtDate, sanitizeHtml } from '../lib/meta'
 import { useSession } from '../App'
@@ -23,10 +24,12 @@ export default function ProjectDetail() {
   const [tasks, setTasks] = useState([])
   const [confirm, setConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [resources, setResources] = useState([])
 
   useEffect(() => {
     fetchProject(id).then(setP).catch(() => nav('/projects'))
     fetchProjectTasks(id).then(setTasks).catch(() => setTasks([]))
+    fetchResources().then(setResources).catch(() => setResources([]))
   }, [id])
 
   if (!p) return <div className="empty">Loading…</div>
@@ -35,6 +38,20 @@ export default function ProjectDetail() {
     setBusy(true)
     try { await removeProject(id); nav('/projects') }
     catch { setBusy(false); setConfirm(false) }
+  }
+
+  const mailToTeam = () => {
+    const byId = new Map(resources.map((r) => [String(r.id), (r.email || '').toLowerCase()]))
+    const raciIds = [
+      ...(p.responsible_ids ?? []), ...(p.accountable_ids ?? []),
+      ...(p.consulted_ids ?? []), ...(p.informed_ids ?? []),
+    ]
+    const emails = [...new Set(
+      [p.owner_email, p.supervisor_email, ...raciIds.map((i) => byId.get(String(i)))]
+        .map((e) => (e || '').trim()).filter(Boolean)
+    )]
+    const subject = `#${p.id} - ${p.title}`.slice(0, 70)
+    window.location.href = `mailto:${emails.join(',')}?subject=${encodeURIComponent(subject)}`
   }
 
   const F = ({ k, v, mono }) => (
@@ -52,6 +69,7 @@ export default function ProjectDetail() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn" onClick={mailToTeam} title="Νέο email προς όλους τους εμπλεκόμενους">✉ Mail-2-Team</button>
           <button className="btn" onClick={() => nav(`/requests/new?project=${id}`)}>New task</button>
           <button className="btn" onClick={() => nav(`/projects/${id}/edit`)}>Edit</button>
           {isAdmin && <button className="btn danger" onClick={() => setConfirm(true)}>Delete</button>}
