@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchRequests } from '../lib/api'
 import { MultiFilter, DateFilter, dateMatches } from '../components/ui'
-import { STATUS_COLOR, fmtDate } from '../lib/meta'
+import { STATUS_COLOR, fmtDate, exportXLSX } from '../lib/meta'
 
 const iso = (d) => (d ?? '').slice(0, 10)
 const parse = (d) => new Date(iso(d) + 'T00:00:00')
@@ -79,6 +79,10 @@ export default function TasksGanttPage() {
         </div>
         <div className="spacer" />
         <span className="grid-count">{tasks.length} tasks</span>
+        <button className="btn sm" onClick={() => exportXLSX(
+          ['Task', 'Project', 'Assignee', 'Tag', 'Status', 'Start Date', 'Due Date'],
+          tasks.map((r) => [r.title, r.project_name ?? '', r.assigned_to ?? '', r.tag_name ?? '', r.status ?? '', fmtDate(r.gs), fmtDate(r.ge)]),
+          'gantt.xlsx')}>⬇ Export Excel</button>
       </div>
 
       {!frame ? (
