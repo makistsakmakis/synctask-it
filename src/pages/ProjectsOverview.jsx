@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import ProjectsKanbanPage from './ProjectsKanban'
 import ProjectsDashboard from './ProjectsDashboard'
+import ProjectsRaciPage from './ProjectsRaci'
 
 const SUBS = {
   Kanban: 'Projects grouped by status.',
   Dashboard: 'All projects — figures live from the database.',
+  RACI: 'RACI matrix — projects × resources.',
 }
 
 export default function ProjectsOverview() {
@@ -22,7 +24,7 @@ export default function ProjectsOverview() {
           ))}
         </div>
       </div>
-      {view === 'Kanban' ? <ProjectsKanbanPage /> : <ProjectsDashboard />}
+      {view === 'Kanban' ? <ProjectsKanbanPage /> : view === 'RACI' ? <ProjectsRaciPage /> : <ProjectsDashboard />}
     </>
   )
 }

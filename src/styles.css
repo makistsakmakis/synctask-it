@@ -335,3 +335,25 @@ input:disabled, select:disabled, textarea:disabled { background: #f3f4f1; color:
 .filterpop.date .filterpop-list { max-height: none; overflow: visible; }
 .filterpop-range > label span { white-space: nowrap; }
 .filterpop-range-inputs input { min-width: 0; flex: 1; }
+
+/* ── RACI matrix view ────────────────────────────────────────────────────── */
+.raci-legend { display: flex; gap: 14px; align-items: center; font-size: 12px; color: var(--ink-soft); flex-wrap: wrap; }
+.raci-legend span { display: inline-flex; align-items: center; gap: 5px; cursor: help; }
+.raci-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,.15); }
+.raci-legend .cR, .racimx td.cR { background: #55b25a; color: #0b3a10; }
+.raci-legend .cA, .racimx td.cA { background: #3a71cf; color: #fff; }
+.raci-legend .cC, .racimx td.cC { background: #86d3e8; color: #093a47; }
+.raci-legend .cI, .racimx td.cI { background: #d9ecd9; color: #2c4a2e; }
+.raci-wrap { overflow: auto; max-height: calc(100vh - 220px); }
+.racimx { border-collapse: collapse; width: 100%; }
+.racimx th, .racimx td { border: 1px solid #aeb8c2; }
+.racimx thead th { background: #1f4e8c; color: #fff; position: sticky; top: 0; z-index: 2; }
+.racimx thead th.corner { text-align: left; padding: 10px 12px; font-size: 13px; left: 0; z-index: 3; }
+.racimx thead th.res { writing-mode: vertical-rl; transform: rotate(180deg); padding: 10px 4px;
+  font-size: 12px; font-weight: 600; height: 150px; min-width: 34px; text-align: left; white-space: nowrap; }
+.racimx td { text-align: center; font-weight: 700; font-size: 12.5px; padding: 6px 8px; }
+.racimx td.cempty { background: #fff; color: #9aa1ad; font-weight: 400; }
+.racimx td.rowtitle { text-align: left; font-weight: 600; background: var(--surface); position: sticky; left: 0; z-index: 1;
+  max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.racimx tbody tr { cursor: pointer; }
+.racimx tbody tr:hover td.rowtitle { background: #f2f6fb; }
