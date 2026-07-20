@@ -2,7 +2,19 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchRequests } from '../lib/api'
 import { MultiFilter, DateFilter, dateMatches } from '../components/ui'
-import { STATUS_COLOR, fmtDate, exportXLSX } from '../lib/meta'
+import { STATUS_COLOR, fmtDate } from '../lib/meta'
+
+// Χρώματα status για το Excel export (αντιστοιχούν στα CSS vars του UI)
+const XLS_COLORS = {
+  'Not Started': 'FF6B7280',
+  'In Progress': 'FF2563EB',
+  Waiting: 'FFB45309',
+  'Waiting Manager Approval': 'FFB45309',
+  'Waiting on someone else': 'FFB45309',
+  Deferred: 'FFB91C1C',
+  'On Hold': 'FFB91C1C',
+  Completed: 'FF15803D',
+}
 
 const iso = (d) => (d ?? '').slice(0, 10)
 const parse = (d) => new Date(iso(d) + 'T00:00:00')
@@ -65,8 +77,46 @@ export default function TasksGanttPage() {
       })
     }
     const pct = (dstr) => Math.min(100, Math.max(0, ((parse(dstr) - t0) / span) * 100))
-    return { months, pct, todayLeft: pct(today) }
+    return { months, pct, todayLeft: pct(today), t0, t1 }
   }, [tasks])
+
+  // Export σε Excel με μορφή Gantt: μία στήλη ανά μήνα, κελιά χρωματισμένα κατά status
+  const exportGantt = async () => {
+    if (!frame) return
+    const ExcelJS = (await import('exceljs')).default
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Gantt', { views: [{ state: 'frozen', xSplit: 6, ySplit: 1 }] })
+    const monthDefs = frame.months.map((m) => {
+      const d = new Date(m.key)
+      return { start: d, end: new Date(d.getFullYear(), d.getMonth() + 1, 1), label: m.label }
+    })
+    const hr = ws.addRow(['Task', 'Project', 'Assignee', 'Status', 'Start Date', 'Due Date', ...monthDefs.map((m) => m.label)])
+    hr.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    hr.eachCell((c) => {
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E8C' } }
+      c.alignment = { horizontal: 'center' }
+    })
+    for (const r of tasks) {
+      const row = ws.addRow([r.title, r.project_name ?? '', r.assigned_to ?? '', r.status ?? '',
+        fmtDate(r.gs), fmtDate(r.ge), ...monthDefs.map(() => '')])
+      const color = XLS_COLORS[r.status] ?? 'FF0E7C6B'
+      const gs = parse(r.gs), ge = parse(r.ge)
+      monthDefs.forEach((m, i) => {
+        if (gs < m.end && ge >= m.start) {
+          row.getCell(7 + i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } }
+        }
+      })
+    }
+    ws.columns = [{ width: 45 }, { width: 22 }, { width: 18 }, { width: 16 }, { width: 12 }, { width: 12 },
+      ...monthDefs.map(() => ({ width: 7 }))]
+    const buf = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'gantt.xlsx'
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
 
   return (
     <>
@@ -79,10 +129,7 @@ export default function TasksGanttPage() {
         </div>
         <div className="spacer" />
         <span className="grid-count">{tasks.length} tasks</span>
-        <button className="btn sm" onClick={() => exportXLSX(
-          ['Task', 'Project', 'Assignee', 'Tag', 'Status', 'Start Date', 'Due Date'],
-          tasks.map((r) => [r.title, r.project_name ?? '', r.assigned_to ?? '', r.tag_name ?? '', r.status ?? '', fmtDate(r.gs), fmtDate(r.ge)]),
-          'gantt.xlsx')}>⬇ Export Excel</button>
+        <button className="btn sm" onClick={exportGantt}>⬇ Export Excel</button>
       </div>
 
       {!frame ? (
