@@ -55,18 +55,31 @@ function getRaciColKeys() {
   }).catch(() => ({ ...RACI_COLS_DEFAULT })))
 }
 
-// Build id→name map from the Resources list for RACI name resolution
+// Build id→{name, abbr} map from the Resources list for RACI resolution
+// (abbr = 'Abbreviation' column, max 5 chars — used only by the Projects grid)
 async function getResourceMap() {
   const items = await listItems(LISTS.resources)
   const m = new Map()
-  for (const i of items) m.set(String(i.id), i.fields?.Title ?? String(i.id))
+  for (const i of items) m.set(String(i.id), {
+    name: i.fields?.Title ?? String(i.id),
+    abbr: (i.fields?.Abbreviation ?? '').trim(),
+  })
   return m
 }
 
 // Resolve an array of numeric IDs to display names using the resource map
 function resolveIds(val, map) {
   const ids = Array.isArray(val) ? val : []
-  return ids.map((id) => map.get(String(id)) ?? String(id)).filter(Boolean)
+  return ids.map((id) => map.get(String(id))?.name ?? String(id)).filter(Boolean)
+}
+
+// Resolve a multi-value lookup to Abbreviations (fallback: full name)
+function resolveAbbrs(val, map) {
+  const arr = Array.isArray(val) ? val : []
+  return arr.map((x) => {
+    const r = map.get(String(x?.LookupId ?? x))
+    return r?.abbr || r?.name || x?.LookupValue || ''
+  }).filter(Boolean)
 }
 
 let _statusWriteColP = null
@@ -121,10 +134,15 @@ const fromSP = (item, users, resMap = new Map(), raciKeys = RACI_COLS_DEFAULT) =
     accountable_ids: (f[raciKeys.accountable_ids] ?? []).map((x) => String(x?.LookupId ?? x)).filter(Boolean),
     consulted_ids:   (f[raciKeys.consulted_ids]   ?? []).map((x) => String(x?.LookupId ?? x)).filter(Boolean),
     informed_ids:    (f[raciKeys.informed_ids]     ?? []).map((x) => String(x?.LookupId ?? x)).filter(Boolean),
-    responsible: (f[raciKeys.responsible_ids] ?? []).map((x) => x?.LookupValue ?? resMap.get(String(x?.LookupId ?? x)) ?? '').filter(Boolean),
-    accountable: (f[raciKeys.accountable_ids] ?? []).map((x) => x?.LookupValue ?? resMap.get(String(x?.LookupId ?? x)) ?? '').filter(Boolean),
-    consulted:   (f[raciKeys.consulted_ids]   ?? []).map((x) => x?.LookupValue ?? resMap.get(String(x?.LookupId ?? x)) ?? '').filter(Boolean),
-    informed:    (f[raciKeys.informed_ids]     ?? []).map((x) => x?.LookupValue ?? resMap.get(String(x?.LookupId ?? x)) ?? '').filter(Boolean),
+    responsible: (f[raciKeys.responsible_ids] ?? []).map((x) => x?.LookupValue ?? resMap.get(String(x?.LookupId ?? x))?.name ?? '').filter(Boolean),
+    accountable: (f[raciKeys.accountable_ids] ?? []).map((x) => x?.LookupValue ?? resMap.get(String(x?.LookupId ?? x))?.name ?? '').filter(Boolean),
+    consulted:   (f[raciKeys.consulted_ids]   ?? []).map((x) => x?.LookupValue ?? resMap.get(String(x?.LookupId ?? x))?.name ?? '').filter(Boolean),
+    informed:    (f[raciKeys.informed_ids]     ?? []).map((x) => x?.LookupValue ?? resMap.get(String(x?.LookupId ?? x))?.name ?? '').filter(Boolean),
+    // RACI abbreviations (Projects grid only) — from Resources 'Abbreviation' column
+    responsible_abbr: resolveAbbrs(f[raciKeys.responsible_ids], resMap),
+    accountable_abbr: resolveAbbrs(f[raciKeys.accountable_ids], resMap),
+    consulted_abbr:   resolveAbbrs(f[raciKeys.consulted_ids],   resMap),
+    informed_abbr:    resolveAbbrs(f[raciKeys.informed_ids],     resMap),
     created_at:  item.createdDateTime,
     modified_at: item.lastModifiedDateTime,
     created_by:  item.createdBy?.user?.displayName  ?? '',
