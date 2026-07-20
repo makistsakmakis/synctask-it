@@ -155,6 +155,106 @@ function colText(col, row) {
 // Ενεργό date filter: αριθμός ημερών ή range με τουλάχιστον ένα άκρο
 const dateActive = (d) => Boolean(d && (typeof d !== 'object' || d.from || d.to))
 
+// Έλεγχος αν μια ημερομηνία (ISO) περνά ένα date filter.
+// dv: null | 'ytd' (1/1 τρέχοντος έτους → σήμερα) | αριθμός>0 (τελευταίες Χ ημέρες)
+//     | αριθμός<0 (επόμενες Χ ημέρες) | { from, to }
+export const dateMatches = (dv, iso) => {
+  if (!dateActive(dv)) return true
+  const v = String(iso ?? '').slice(0, 10)
+  if (!v) return false
+  let fromIso = null, toIso = null
+  if (typeof dv === 'object') {
+    fromIso = dv.from || null
+    toIso = dv.to || null
+  } else if (dv === 'ytd') {
+    fromIso = `${new Date().getFullYear()}-01-01`
+    toIso = new Date().toISOString().slice(0, 10)
+  } else if (Number(dv) < 0) {
+    const to = new Date(); to.setHours(0, 0, 0, 0); to.setDate(to.getDate() - Number(dv))
+    fromIso = new Date().toISOString().slice(0, 10)
+    toIso = to.toISOString().slice(0, 10)
+  } else {
+    const from = new Date(); from.setHours(0, 0, 0, 0); from.setDate(from.getDate() - Number(dv))
+    fromIso = from.toISOString().slice(0, 10)
+    toIso = new Date().toISOString().slice(0, 10)
+  }
+  if (fromIso && v < fromIso) return false
+  if (toIso && v > toIso) return false
+  return true
+}
+
+const PAST_PRESETS = [[7, 'Τελευταία εβδομάδα'], [30, 'Τελευταίος μήνας'], [90, 'Τελευταίο τρίμηνο'],
+  [180, 'Τελευταίο εξάμηνο'], [365, 'Τελευταίο έτος']]
+const NEXT_PRESETS = [[-7, 'Επόμενη εβδομάδα'], [-30, 'Επόμενος μήνας'], [-90, 'Επόμενο τρίμηνο'],
+  [-180, 'Επόμενο εξάμηνο'], [-365, 'Επόμενο έτος']]
+const PRESET_VALS = new Set([...PAST_PRESETS, ...NEXT_PRESETS].map(([d]) => d))
+
+// Κοινές επιλογές date filter — χρησιμοποιείται και στα grid views και στα Overviews
+export function DateFilterOptions({ value, onChange, itemClass = '' }) {
+  const stop = (e) => e.stopPropagation()
+  const [customPast, setCustomPast] = useState(
+    typeof value === 'number' && value > 0 && !PRESET_VALS.has(value) ? String(value) : '')
+  const [customNext, setCustomNext] = useState(
+    typeof value === 'number' && value < 0 && !PRESET_VALS.has(value) ? String(-value) : '')
+  const range = typeof value === 'object' && value ? value : null
+  const active = dateActive(value)
+  return (
+    <>
+      {/* 1. Όλες */}
+      <label className={itemClass} onClick={stop}>
+        <input type="radio" checked={!active} onChange={() => onChange(null)} />
+        <span>Όλες οι ημερομηνίες</span>
+      </label>
+      {/* 2. Εφέτος: 1/1 τρέχοντος έτους έως σήμερα */}
+      <label className={itemClass} onClick={stop}>
+        <input type="radio" checked={value === 'ytd'} onChange={() => onChange('ytd')} />
+        <span>Εφέτος</span>
+      </label>
+      {/* 3. Από – Έως */}
+      <label className={itemClass} onClick={stop}>
+        <input type="radio" checked={Boolean(range)} onChange={() => onChange({ from: '', to: '' })} />
+        <span>Από – Έως</span>
+      </label>
+      <div className="filterpop-range-inputs" style={{ padding: '2px 8px 6px' }} onClick={stop}>
+        <input type="date" title="Από" value={range?.from ?? ''}
+          onChange={(e) => onChange({ ...(range ?? {}), from: e.target.value })} />
+        <input type="date" title="Έως" value={range?.to ?? ''}
+          onChange={(e) => onChange({ ...(range ?? {}), to: e.target.value })} />
+      </div>
+      {/* 4. Παρελθόν */}
+      {PAST_PRESETS.map(([d, l]) => (
+        <label key={d} className={itemClass} onClick={stop}>
+          <input type="radio" checked={value === d} onChange={() => onChange(d)} />
+          <span>{l}</span>
+        </label>
+      ))}
+      <label className={itemClass} onClick={stop}>
+        <input type="radio" checked={Boolean(customPast) && value === Number(customPast)}
+          onChange={() => customPast && onChange(Number(customPast))} />
+        <span>Τελευταίες</span>
+        <input type="number" min="1" className="filterpop-days" value={customPast}
+          onChange={(e) => { setCustomPast(e.target.value); setCustomNext(''); onChange(e.target.value ? Number(e.target.value) : null) }} />
+        <span>ημέρες</span>
+      </label>
+      {/* 5. Μέλλον */}
+      {NEXT_PRESETS.map(([d, l]) => (
+        <label key={d} className={itemClass} onClick={stop}>
+          <input type="radio" checked={value === d} onChange={() => onChange(d)} />
+          <span>{l}</span>
+        </label>
+      ))}
+      <label className={itemClass} onClick={stop}>
+        <input type="radio" checked={Boolean(customNext) && value === -Number(customNext)}
+          onChange={() => customNext && onChange(-Number(customNext))} />
+        <span>Επόμενες</span>
+        <input type="number" min="1" className="filterpop-days" value={customNext}
+          onChange={(e) => { setCustomNext(e.target.value); setCustomPast(''); onChange(e.target.value ? -Number(e.target.value) : null) }} />
+        <span>ημέρες</span>
+      </label>
+    </>
+  )
+}
+
 export function DataGrid({
   rows, columns, onRowClick, emptyHint,
   filename = 'export.xlsx',
@@ -168,7 +268,6 @@ export function DataGrid({
   const [colFilters, setColFilters] = useState({}) // { [colKey]: Set<string> } — empty = no filter
   const [textFilters, setTextFilters] = useState({}) // { [colKey]: substring } — columns with ftype:'text'
   const [dateFilters, setDateFilters] = useState({}) // { [colKey]: days-back } — columns with ftype:'date'
-  const [customDays, setCustomDays] = useState({})   // { [colKey]: raw input for «Χ ημέρες» }
   const [sort, setSort] = useState(null)           // { key, dir: 1|-1 }
   const [openFilter, setOpenFilter] = useState(null)
   const [filterSearch, setFilterSearch] = useState('')
@@ -239,24 +338,7 @@ export function DataGrid({
     }
     for (const [key, dv] of Object.entries(dateFilters)) {
       if (!dateActive(dv)) continue
-      let fromIso = null, toIso = null
-      if (typeof dv === 'object') {
-        fromIso = dv.from || null
-        toIso = dv.to || null
-      } else {
-        const n = Number(dv)
-        if (!n || n <= 0) continue
-        const from = new Date(); from.setHours(0, 0, 0, 0); from.setDate(from.getDate() - n)
-        fromIso = from.toISOString().slice(0, 10)
-        toIso = new Date().toISOString().slice(0, 10)
-      }
-      out = out.filter((r) => {
-        const v = String(r[key] ?? '').slice(0, 10)
-        if (!v) return false
-        if (fromIso && v < fromIso) return false
-        if (toIso && v > toIso) return false
-        return true
-      })
+      out = out.filter((r) => dateMatches(dv, r[key]))
     }
     return out
   }, [searchedRows, colFilters, textFilters, dateFilters, columns])
@@ -283,7 +365,7 @@ export function DataGrid({
     || Object.values(dateFilters).some(dateActive)
 
   const clearAllFilters = () => {
-    setColFilters({}); setTextFilters({}); setDateFilters({}); setCustomDays({})
+    setColFilters({}); setTextFilters({}); setDateFilters({})
     setQ('')
     if (defaultChip) setChip(defaultChip)
   }
@@ -338,14 +420,6 @@ export function DataGrid({
   const openSel = colFilters[openFilter]
   const allChecked = !openSel || openSel.size === 0
   const isChecked = (v) => allChecked ? true : openSel.has(NONE) ? false : openSel.has(v)
-
-  const openRange = openFilter && typeof dateFilters[openFilter] === 'object' && dateFilters[openFilter]
-    ? dateFilters[openFilter] : null
-
-  const DATE_PRESETS = [
-    [7, 'Τελευταία εβδομάδα'], [30, 'Τελευταίος μήνας'], [90, 'Τελευταίο τρίμηνο'],
-    [180, 'Τελευταίο εξάμηνο'], [365, 'Τελευταίο έτος'],
-  ]
 
   return (
     <>
@@ -440,49 +514,11 @@ export function DataGrid({
               >Καθαρισμός</button>
             </div>
           ) : openCol?.ftype === 'date' ? (
-            /* Date column: έτοιμα φίλτρα περιόδου + Χ ημέρες */
+            /* Date column: κοινές επιλογές περιόδου (ίδιες με τα Overviews) */
             <div className="filterpop-list">
-              <label className="filterpop-item" onClick={(e) => e.stopPropagation()}>
-                <input type="radio" checked={!dateActive(dateFilters[openFilter])}
-                  onChange={() => setDateFilters((p) => ({ ...p, [openFilter]: null }))} />
-                <span>Όλες οι ημερομηνίες</span>
-              </label>
-              {DATE_PRESETS.map(([d, l]) => (
-                <label key={d} className="filterpop-item" onClick={(e) => e.stopPropagation()}>
-                  <input type="radio" checked={dateFilters[openFilter] === d}
-                    onChange={() => setDateFilters((p) => ({ ...p, [openFilter]: d }))} />
-                  <span>{l}</span>
-                </label>
-              ))}
-              <label className="filterpop-item" onClick={(e) => e.stopPropagation()}>
-                <input type="radio"
-                  checked={Boolean(customDays[openFilter]) && dateFilters[openFilter] === Number(customDays[openFilter])}
-                  onChange={() => customDays[openFilter] && setDateFilters((p) => ({ ...p, [openFilter]: Number(customDays[openFilter]) }))} />
-                <span>Τελευταίες</span>
-                <input type="number" min="1" className="filterpop-days"
-                  value={customDays[openFilter] ?? ''}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setCustomDays((p) => ({ ...p, [openFilter]: v }))
-                    setDateFilters((p) => ({ ...p, [openFilter]: v ? Number(v) : null }))
-                  }} />
-                <span>ημέρες</span>
-              </label>
-              {/* Από – Έως με ημερολόγιο */}
-              <div className="filterpop-range" onClick={(e) => e.stopPropagation()}>
-                <label>
-                  <input type="radio" checked={Boolean(openRange)}
-                    onChange={() => setDateFilters((p) => ({ ...p, [openFilter]: { from: '', to: '' } }))} />
-                  <span>Από – Έως</span>
-                </label>
-                <div className="filterpop-range-inputs">
-                  <input type="date" title="Από" value={openRange?.from ?? ''}
-                    onChange={(e) => setDateFilters((p) => ({ ...p, [openFilter]: { ...(openRange ?? {}), from: e.target.value } }))} />
-                  <input type="date" title="Έως" value={openRange?.to ?? ''}
-                    onChange={(e) => setDateFilters((p) => ({ ...p, [openFilter]: { ...(openRange ?? {}), to: e.target.value } }))} />
-                </div>
-              </div>
+              <DateFilterOptions key={openFilter} itemClass="filterpop-item"
+                value={dateFilters[openFilter] ?? null}
+                onChange={(v) => setDateFilters((p) => ({ ...p, [openFilter]: v }))} />
             </div>
           ) : (
             /* Choice column: checkboxes + toggle επιλογής/αποεπιλογής όλων */
@@ -607,37 +643,11 @@ export function MultiPersonSelect({ options, value, onChange, disabled }) {
   )
 }
 
-// Έλεγχος αν μια ημερομηνία (ISO) περνά ένα date filter (ημέρες πίσω ή {from,to})
-export const dateMatches = (dv, iso) => {
-  if (!dv || (typeof dv === 'object' && !dv.from && !dv.to)) return true
-  const v = String(iso ?? '').slice(0, 10)
-  if (!v) return false
-  let fromIso = null, toIso = null
-  if (typeof dv === 'object') {
-    fromIso = dv.from || null
-    toIso = dv.to || null
-  } else if (Number(dv) < 0) {
-    // αρνητικό = «επόμενες Χ ημέρες»: [σήμερα, σήμερα+Χ]
-    const to = new Date(); to.setHours(0, 0, 0, 0); to.setDate(to.getDate() - Number(dv))
-    fromIso = new Date().toISOString().slice(0, 10)
-    toIso = to.toISOString().slice(0, 10)
-  } else {
-    const from = new Date(); from.setHours(0, 0, 0, 0); from.setDate(from.getDate() - Number(dv))
-    fromIso = from.toISOString().slice(0, 10)
-    toIso = new Date().toISOString().slice(0, 10)
-  }
-  if (fromIso && v < fromIso) return false
-  if (toIso && v > toIso) return false
-  return true
-}
-
 // Dropdown φίλτρου ημερομηνίας για τα Overviews — ίδια λογική με τα date filters
 // των grid (presets, Χ ημέρες, Από–Έως με ημερολόγιο).
 // value: null | number (ημέρες πίσω) | { from, to }
 export function DateFilter({ label, value, onChange, tooltip }) {
   const [open, setOpen] = useState(false)
-  const [customPast, setCustomPast] = useState('')
-  const [customNext, setCustomNext] = useState('')
   const ref = useRef(null)
   useEffect(() => {
     if (!open) return
@@ -645,12 +655,7 @@ export function DateFilter({ label, value, onChange, tooltip }) {
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [open])
-  const range = typeof value === 'object' && value ? value : null
-  const active = Boolean(value && (typeof value !== 'object' || value.from || value.to))
-  const PAST = [[7, 'Τελευταία εβδομάδα'], [30, 'Τελευταίος μήνας'], [90, 'Τελευταίο τρίμηνο'],
-    [180, 'Τελευταίο εξάμηνο'], [365, 'Τελευταίο έτος']]
-  const NEXT = [[-7, 'Επόμενη εβδομάδα'], [-30, 'Επόμενος μήνας'], [-90, 'Επόμενο τρίμηνο'],
-    [-180, 'Επόμενο εξάμηνο'], [-365, 'Επόμενο έτος']]
+  const active = dateActive(value)
   return (
     <div className="mfilter" ref={ref}>
       <button className="btn" title={tooltip} onClick={() => setOpen((o) => !o)}>
@@ -658,46 +663,8 @@ export function DateFilter({ label, value, onChange, tooltip }) {
       </button>
       {open && (
         <div className="pop" style={{ minWidth: 250, maxHeight: 'none', overflow: 'visible' }}>
-          {active && (
-            <label style={{ color: 'var(--accent)' }}
-              onClick={() => { onChange(null); setCustomPast(''); setCustomNext('') }}>Clear</label>
-          )}
-          {/* 1. Όλες */}
-          <label><input type="radio" checked={!active} onChange={() => onChange(null)} />Όλες οι ημερομηνίες</label>
-          {/* 2. Από – Έως */}
-          <label><input type="radio" checked={Boolean(range)} onChange={() => onChange({ from: '', to: '' })} />Από – Έως</label>
-          <div className="filterpop-range-inputs" style={{ padding: '2px 8px 6px' }}>
-            <input type="date" title="Από" value={range?.from ?? ''} onClick={(e) => e.stopPropagation()}
-              onChange={(e) => onChange({ ...(range ?? {}), from: e.target.value })} />
-            <input type="date" title="Έως" value={range?.to ?? ''} onClick={(e) => e.stopPropagation()}
-              onChange={(e) => onChange({ ...(range ?? {}), to: e.target.value })} />
-          </div>
-          {/* 3. Παρελθόν (6 επιλογές) */}
-          {PAST.map(([d, l]) => (
-            <label key={d}><input type="radio" checked={value === d} onChange={() => onChange(d)} />{l}</label>
-          ))}
-          <label>
-            <input type="radio" checked={Boolean(customPast) && value === Number(customPast)}
-              onChange={() => customPast && onChange(Number(customPast))} />
-            Τελευταίες
-            <input type="number" min="1" className="filterpop-days" value={customPast}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => { setCustomPast(e.target.value); setCustomNext(''); onChange(e.target.value ? Number(e.target.value) : null) }} />
-            ημέρες
-          </label>
-          {/* 4. Μέλλον (6 επιλογές) */}
-          {NEXT.map(([d, l]) => (
-            <label key={d}><input type="radio" checked={value === d} onChange={() => onChange(d)} />{l}</label>
-          ))}
-          <label>
-            <input type="radio" checked={Boolean(customNext) && value === -Number(customNext)}
-              onChange={() => customNext && onChange(-Number(customNext))} />
-            Επόμενες
-            <input type="number" min="1" className="filterpop-days" value={customNext}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => { setCustomNext(e.target.value); setCustomPast(''); onChange(e.target.value ? -Number(e.target.value) : null) }} />
-            ημέρες
-          </label>
+          {active && <label style={{ color: 'var(--accent)' }} onClick={() => onChange(null)}>Clear</label>}
+          <DateFilterOptions key={open} value={value ?? null} onChange={onChange} />
         </div>
       )}
     </div>
