@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchRequests } from '../lib/api'
-import { DateFilter, dateMatches } from '../components/ui'
+import { DateFilter, dateMatches, MultiFilter } from '../components/ui'
 import { isOpen, isAssigned, isOverdue, STATUS_COLOR, STATUSES } from '../lib/meta'
 
 const days = (a, b) => Math.round((new Date(a) - new Date(b)) / 86400000)
@@ -9,8 +9,14 @@ const avg = (xs) => (xs.length ? (xs.reduce((s, x) => s + x, 0) / xs.length).toF
 export default function Dashboard() {
   const [rows, setRows] = useState([])
   const [dl, setDl] = useState(null)
+  const [projects, setProjects] = useState([])
   useEffect(() => { fetchRequests().then(setRows).catch(console.error) }, [])
-  const visible = useMemo(() => rows.filter((r) => dateMatches(dl, r.golive_required)), [rows, dl])
+  const projectOpts = useMemo(() =>
+    [...new Set(rows.map((r) => r.project_name).filter(Boolean))].sort()
+      .map((v) => ({ value: v, label: v })), [rows])
+  const visible = useMemo(() => rows.filter((r) =>
+    dateMatches(dl, r.golive_required)
+    && (projects.length === 0 || projects.includes(r.project_name))), [rows, dl, projects])
 
   const k = useMemo(() => {
     const now = new Date()
@@ -63,6 +69,7 @@ export default function Dashboard() {
     <>
       <div className="toolbar">
         <div className="chips" style={{ gap: 8 }}>
+          <MultiFilter label="Project" options={projectOpts} value={projects} onChange={setProjects} />
           <DateFilter label="Deadline" tooltip="Due date του task" value={dl} onChange={setDl} />
         </div>
         <div className="spacer" />

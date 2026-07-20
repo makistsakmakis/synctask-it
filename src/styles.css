@@ -360,3 +360,25 @@ input:disabled, select:disabled, textarea:disabled { background: #f3f4f1; color:
 
 .mfilter .pop label input[type="radio"] { width: auto; flex-shrink: 0; margin: 0;
   accent-color: var(--accent); cursor: pointer; }
+
+/* ── Gantt view (Tasks Overview) ─────────────────────────────────────────── */
+.gantt-wrap { overflow-x: auto; }
+.gantt-header { display: flex; border-bottom: 1px solid var(--line); background: #f7f8f5; }
+.gantt-header .gantt-side { font-size: 11px; text-transform: uppercase; letter-spacing: .7px;
+  color: var(--ink-soft); font-weight: 600; font-family: var(--font-table); }
+.gantt-side { width: 280px; min-width: 280px; padding: 8px 12px; }
+.gantt-time { position: relative; flex: 1; height: 32px; }
+.gantt-month { position: absolute; top: 0; height: 100%; border-left: 1px solid var(--line);
+  font-size: 11px; color: var(--ink-soft); padding: 9px 0 0 6px; white-space: nowrap; overflow: hidden; }
+.gantt-body { position: relative; }
+.gantt-gridlines { position: absolute; top: 0; bottom: 0; left: 280px; right: 0; pointer-events: none; z-index: 0; }
+.gantt-line { position: absolute; top: 0; bottom: 0; border-left: 1px solid #eef0ea; }
+.gantt-today { position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--danger); }
+.gantt-row { display: flex; border-bottom: 1px solid var(--line); position: relative; z-index: 1; }
+.gantt-row:last-child { border-bottom: none; }
+.gantt-row:hover { background: rgba(247, 248, 245, .7); }
+.gantt-row .gantt-side { font-size: 13px; font-weight: 600; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 7px 12px; }
+.gantt-row .gantt-side:hover { text-decoration: underline; }
+.gantt-track { position: relative; flex: 1; min-height: 30px; }
+.gantt-bar { position: absolute; top: 7px; height: 16px; border-radius: 5px; min-width: 6px; opacity: .92; }

@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import KanbanPage from './KanbanPage'
 import Dashboard from './Dashboard'
+import TasksGanttPage from './TasksGantt'
 
 const SUBS = {
   Kanban: 'Visual overview by status.',
   Dashboard: 'System-wide operational view — all figures live from the database.',
+  Gantt: 'Χρονοδιάγραμμα tasks: Start Date → Due Date.',
 }
 
 export default function TasksOverview() {
@@ -22,7 +24,7 @@ export default function TasksOverview() {
           ))}
         </div>
       </div>
-      {view === 'Kanban' ? <KanbanPage /> : <Dashboard />}
+      {view === 'Kanban' ? <KanbanPage /> : view === 'Gantt' ? <TasksGanttPage /> : <Dashboard />}
     </>
   )
 }
