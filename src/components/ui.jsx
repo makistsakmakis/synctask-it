@@ -607,12 +607,12 @@ export function MultiPersonSelect({ options, value, onChange, disabled }) {
   )
 }
 
-export function MultiFilter({ label, options, value, onChange }) {
+export function MultiFilter({ label, options, value, onChange, tooltip }) {
   const [open, setOpen] = useState(false)
   const toggle = (v) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v])
   return (
     <div className="mfilter">
-      <button className="btn" onClick={() => setOpen((o) => !o)}>
+      <button className="btn" title={tooltip} onClick={() => setOpen((o) => !o)}>
         {label}{value.length ? ` (${value.length})` : ''} ▾
       </button>
       {open && (
