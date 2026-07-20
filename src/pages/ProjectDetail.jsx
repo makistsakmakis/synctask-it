@@ -7,11 +7,11 @@ import { fmtDate, sanitizeHtml } from '../lib/meta'
 import { useSession } from '../App'
 
 const taskCols = [
-  { key: 'title', label: 'Title', render: (r) => <span className="ctitle" title={r.title}>{r.title}</span> },
+  { key: 'title', label: 'Title', ftype: 'text', render: (r) => <span className="ctitle" title={r.title}>{r.title}</span> },
   { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
   { key: 'priority', label: 'Priority', render: (r) => r.priority },
   { key: 'assigned_to', label: 'Assigned to', render: (r) => r.assigned_to ?? '—' },
-  { key: 'golive_required', label: 'Due', render: (r) => <span className="mono">{fmtDate(r.golive_required)}</span> },
+  { key: 'golive_required', label: 'Due', ftype: 'date', render: (r) => <span className="mono">{fmtDate(r.golive_required)}</span> },
   { key: 'flags', label: '', sortKey: 'status', render: (r) => <Flags r={r} /> },
 ]
 

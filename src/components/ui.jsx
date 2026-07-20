@@ -162,11 +162,20 @@ export function DataGrid({
   const [chip, setChip] = useState(defaultChip ?? (chips ? Object.keys(chips)[0] : null))
   const [q, setQ] = useState('')
   const [colFilters, setColFilters] = useState({}) // { [colKey]: Set<string> } — empty = no filter
+  const [textFilters, setTextFilters] = useState({}) // { [colKey]: substring } — columns with ftype:'text'
+  const [dateFilters, setDateFilters] = useState({}) // { [colKey]: days-back } — columns with ftype:'date'
+  const [customDays, setCustomDays] = useState({})   // { [colKey]: raw input for «Χ ημέρες» }
   const [sort, setSort] = useState(null)           // { key, dir: 1|-1 }
   const [openFilter, setOpenFilter] = useState(null)
   const [filterSearch, setFilterSearch] = useState('')
   const [filterPos, setFilterPos] = useState({ top: 0, left: 0 })
+  const [page, setPage] = useState(0)
   const popRef = useRef(null)
+  const PAGE_SIZE = 10
+  const NONE = '\u0000__none__' // sentinel: «καμία τιμή επιλεγμένη» στο checkbox filter
+
+  // Επιστροφή στην 1η σελίδα όταν αλλάζει οποιοδήποτε φίλτρο
+  useEffect(() => { setPage(0) }, [q, chip, colFilters, textFilters, dateFilters])
 
   // Close popup on outside click
   useEffect(() => {
@@ -208,7 +217,7 @@ export function DataGrid({
     return out
   }, [searchedRows, columns, colFilters])
 
-  // 4. Apply column filters
+  // 4. Apply column filters (checkbox + κείμενο + ημερομηνία)
   const filtered = useMemo(() => {
     let out = searchedRows
     for (const [key, sel] of Object.entries(colFilters)) {
@@ -217,11 +226,29 @@ export function DataGrid({
       if (!col) continue
       out = out.filter((r) => sel.has(colText(col, r)))
     }
+    for (const [key, txt] of Object.entries(textFilters)) {
+      const t = (txt ?? '').trim().toLowerCase()
+      if (!t) continue
+      const col = columns.find((c) => c.key === key)
+      if (!col) continue
+      out = out.filter((r) => colText(col, r).toLowerCase().includes(t))
+    }
+    for (const [key, days] of Object.entries(dateFilters)) {
+      const n = Number(days)
+      if (!n || n <= 0) continue
+      const from = new Date(); from.setHours(0, 0, 0, 0); from.setDate(from.getDate() - n)
+      const fromIso = from.toISOString().slice(0, 10)
+      const todayIso = new Date().toISOString().slice(0, 10)
+      out = out.filter((r) => {
+        const v = String(r[key] ?? '').slice(0, 10)
+        return v && v >= fromIso && v <= todayIso
+      })
+    }
     return out
-  }, [searchedRows, colFilters, columns])
+  }, [searchedRows, colFilters, textFilters, dateFilters, columns])
 
   // 5. Sort — always on raw row[key] for correct date/number ordering
-  const visible = useMemo(() => {
+  const sorted = useMemo(() => {
     if (!sort) return filtered
     const col = columns.find((c) => c.key === sort.key)
     if (!col) return filtered
@@ -232,10 +259,17 @@ export function DataGrid({
     })
   }, [filtered, sort, columns])
 
+  // 6. Σελιδοποίηση: 10 γραμμές ανά σελίδα
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  const curPage = Math.min(page, pageCount - 1)
+  const visible = sorted.slice(curPage * PAGE_SIZE, curPage * PAGE_SIZE + PAGE_SIZE)
+
   const hasColFilters = Object.values(colFilters).some((s) => s && s.size > 0)
+    || Object.values(textFilters).some((t) => t && t.trim())
+    || Object.values(dateFilters).some(Boolean)
 
   const clearAllFilters = () => {
-    setColFilters({})
+    setColFilters({}); setTextFilters({}); setDateFilters({}); setCustomDays({})
     setQ('')
     if (defaultChip) setChip(defaultChip)
   }
@@ -244,14 +278,16 @@ export function DataGrid({
     setColFilters((prev) => {
       const allVals = uniqueVals[colKey] ?? []
       const cur = prev[colKey] ? new Set(prev[colKey]) : new Set()
+      if (cur.has(NONE)) return { ...prev, [colKey]: new Set([val]) } // από «κανένα» → μόνο αυτό
       if (cur.size === 0) {
         // All shown → user unchecks one → show all EXCEPT that value
         const ns = new Set(allVals)
         ns.delete(val)
-        return { ...prev, [colKey]: ns }
+        return { ...prev, [colKey]: ns.size ? ns : new Set([NONE]) }
       }
       if (cur.has(val)) cur.delete(val)
       else cur.add(val)
+      if (cur.size === 0) return { ...prev, [colKey]: new Set([NONE]) }
       // If everything is now selected, reset to no-filter
       if (allVals.length > 0 && allVals.every((v) => cur.has(v))) return { ...prev, [colKey]: new Set() }
       return { ...prev, [colKey]: new Set(cur) }
@@ -274,17 +310,24 @@ export function DataGrid({
   const doExport = async () => {
     const exportCols = columns.filter((c) => c.label && !c.noFilter)
     const headers = exportCols.map((c) => c.label)
-    const data = visible.map((r) => exportCols.map((c) => colText(c, r)))
+    const data = sorted.map((r) => exportCols.map((c) => colText(c, r)))
     await exportXLSX(headers, data, filename)
   }
 
   // Dropdown state
+  const openCol = openFilter ? columns.find((c) => c.key === openFilter) : null
   const openVals = openFilter ? (uniqueVals[openFilter] ?? []) : []
   const displayedVals = filterSearch
     ? openVals.filter((v) => v.toLowerCase().includes(filterSearch.toLowerCase()))
     : openVals
   const openSel = colFilters[openFilter]
-  const isChecked = (v) => !openSel || openSel.size === 0 || openSel.has(v)
+  const allChecked = !openSel || openSel.size === 0
+  const isChecked = (v) => allChecked ? true : openSel.has(NONE) ? false : openSel.has(v)
+
+  const DATE_PRESETS = [
+    [7, 'Τελευταία εβδομάδα'], [30, 'Τελευταίος μήνας'], [90, 'Τελευταίο τρίμηνο'],
+    [180, 'Τελευταίο εξάμηνο'], [365, 'Τελευταίο έτος'],
+  ]
 
   return (
     <>
@@ -305,9 +348,17 @@ export function DataGrid({
           <button className="btn" onClick={clearAllFilters}>✕ Αναίρεση φίλτρων</button>
         )}
         <div className="spacer" />
-        <span className="grid-count">{visible.length} εγγραφές</span>
+        <span className="grid-count">{sorted.length} εγγραφές</span>
         <button className="btn" onClick={doExport}>⬇ Export Excel</button>
       </div>
+      {/* Σελιδοποίηση — πάνω αριστερά από το grid */}
+      {sorted.length > 0 && (
+        <div className="pager">
+          <button className="btn sm" disabled={curPage === 0} onClick={() => setPage(curPage - 1)} title="Προηγούμενη σελίδα">‹</button>
+          <span>Σελίδα {curPage + 1} / {pageCount}</span>
+          <button className="btn sm" disabled={curPage >= pageCount - 1} onClick={() => setPage(curPage + 1)} title="Επόμενη σελίδα">›</button>
+        </div>
+      )}
       <div className="card">
         {visible.length === 0 ? (
           <div className="empty">{emptyHint ?? 'Δεν βρέθηκαν αποτελέσματα.'}</div>
@@ -319,11 +370,12 @@ export function DataGrid({
                   {railKey && <th style={{ width: 4, padding: 0 }} />}
                   {columns.map((col) => {
                     const filterActive = (colFilters[col.key]?.size ?? 0) > 0
+                      || Boolean((textFilters[col.key] ?? '').trim()) || Boolean(dateFilters[col.key])
                     const sortDir = sort?.key === col.key ? sort.dir : null
                     return (
                       <th key={col.key} className={col.noSort ? '' : 'sortable'} onClick={() => clickSort(col)}>
                         <div className="th-inner" data-tooltip={col.tooltip || undefined}>
-                          <span>{col.label}{sortDir ? (sortDir > 0 ? ' ↑' : ' ↓') : ''}</span>
+                          <span>{col.label}{sortDir ? <span className="sortarrow">{sortDir > 0 ? '↑' : '↓'}</span> : null}</span>
                           {!col.noFilter && col.label && (
                             <button
                               className={'filterbtn' + (filterActive ? ' active' : '')}
@@ -353,31 +405,83 @@ export function DataGrid({
       {/* Filter dropdown — fixed-position to escape table overflow clipping */}
       {openFilter && (
         <div className="filterpop" ref={popRef} style={{ top: filterPos.top, left: filterPos.left }}>
-          <div className="filterpop-head">
-            <input
-              className="filterpop-search"
-              placeholder="Αναζήτηση τιμών…"
-              value={filterSearch}
-              autoFocus
-              onChange={(e) => setFilterSearch(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <button
-              className="filterpop-all"
-              onClick={(e) => { e.stopPropagation(); setColFilters((p) => ({ ...p, [openFilter]: new Set() })) }}
-            >Επιλογή όλων</button>
-          </div>
-          <div className="filterpop-list">
-            {displayedVals.length === 0
-              ? <div className="filterpop-empty">Δεν βρέθηκαν τιμές</div>
-              : displayedVals.map((v) => (
-                <label key={v} className="filterpop-item" onClick={(e) => e.stopPropagation()}>
-                  <input type="checkbox" checked={isChecked(v)} onChange={() => toggleColFilter(openFilter, v)} />
-                  <span>{v || '(κενό)'}</span>
+          {openCol?.ftype === 'text' ? (
+            /* Text column: φίλτρο «περιέχει» */
+            <div className="filterpop-head">
+              <input
+                className="filterpop-search"
+                placeholder="Περιέχει…"
+                value={textFilters[openFilter] ?? ''}
+                autoFocus
+                onChange={(e) => setTextFilters((p) => ({ ...p, [openFilter]: e.target.value }))}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <button
+                className="filterpop-all"
+                onClick={(e) => { e.stopPropagation(); setTextFilters((p) => ({ ...p, [openFilter]: '' })) }}
+              >Καθαρισμός</button>
+            </div>
+          ) : openCol?.ftype === 'date' ? (
+            /* Date column: έτοιμα φίλτρα περιόδου + Χ ημέρες */
+            <div className="filterpop-list">
+              <label className="filterpop-item" onClick={(e) => e.stopPropagation()}>
+                <input type="radio" checked={!dateFilters[openFilter]}
+                  onChange={() => setDateFilters((p) => ({ ...p, [openFilter]: null }))} />
+                <span>Όλες οι ημερομηνίες</span>
+              </label>
+              {DATE_PRESETS.map(([d, l]) => (
+                <label key={d} className="filterpop-item" onClick={(e) => e.stopPropagation()}>
+                  <input type="radio" checked={dateFilters[openFilter] === d}
+                    onChange={() => setDateFilters((p) => ({ ...p, [openFilter]: d }))} />
+                  <span>{l}</span>
                 </label>
-              ))
-            }
-          </div>
+              ))}
+              <label className="filterpop-item" onClick={(e) => e.stopPropagation()}>
+                <input type="radio"
+                  checked={Boolean(customDays[openFilter]) && dateFilters[openFilter] === Number(customDays[openFilter])}
+                  onChange={() => customDays[openFilter] && setDateFilters((p) => ({ ...p, [openFilter]: Number(customDays[openFilter]) }))} />
+                <span>Τελευταίες</span>
+                <input type="number" min="1" className="filterpop-days"
+                  value={customDays[openFilter] ?? ''}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setCustomDays((p) => ({ ...p, [openFilter]: v }))
+                    setDateFilters((p) => ({ ...p, [openFilter]: v ? Number(v) : null }))
+                  }} />
+                <span>ημέρες</span>
+              </label>
+            </div>
+          ) : (
+            /* Choice column: checkboxes + toggle επιλογής/αποεπιλογής όλων */
+            <>
+              <div className="filterpop-head">
+                <input
+                  className="filterpop-search"
+                  placeholder="Αναζήτηση τιμών…"
+                  value={filterSearch}
+                  autoFocus
+                  onChange={(e) => setFilterSearch(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <button
+                  className="filterpop-all"
+                  onClick={(e) => { e.stopPropagation(); setColFilters((p) => ({ ...p, [openFilter]: allChecked ? new Set([NONE]) : new Set() })) }}
+                >{allChecked ? 'Αποεπιλογή όλων' : 'Επιλογή όλων'}</button>
+              </div>
+              <div className="filterpop-list">
+                {displayedVals.length === 0
+                  ? <div className="filterpop-empty">Δεν βρέθηκαν τιμές</div>
+                  : displayedVals.map((v) => (
+                    <label key={v} className="filterpop-item" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={isChecked(v)} onChange={() => toggleColFilter(openFilter, v)} />
+                      <span>{v || '(κενό)'}</span>
+                    </label>
+                  ))
+                }
+              </div>
+            </>
+          )}
         </div>
       )}
     </>
