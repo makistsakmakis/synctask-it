@@ -616,6 +616,11 @@ export const dateMatches = (dv, iso) => {
   if (typeof dv === 'object') {
     fromIso = dv.from || null
     toIso = dv.to || null
+  } else if (Number(dv) < 0) {
+    // αρνητικό = «επόμενες Χ ημέρες»: [σήμερα, σήμερα+Χ]
+    const to = new Date(); to.setHours(0, 0, 0, 0); to.setDate(to.getDate() - Number(dv))
+    fromIso = new Date().toISOString().slice(0, 10)
+    toIso = to.toISOString().slice(0, 10)
   } else {
     const from = new Date(); from.setHours(0, 0, 0, 0); from.setDate(from.getDate() - Number(dv))
     fromIso = from.toISOString().slice(0, 10)
@@ -631,7 +636,8 @@ export const dateMatches = (dv, iso) => {
 // value: null | number (ημέρες πίσω) | { from, to }
 export function DateFilter({ label, value, onChange, tooltip }) {
   const [open, setOpen] = useState(false)
-  const [custom, setCustom] = useState('')
+  const [customPast, setCustomPast] = useState('')
+  const [customNext, setCustomNext] = useState('')
   const ref = useRef(null)
   useEffect(() => {
     if (!open) return
@@ -641,31 +647,24 @@ export function DateFilter({ label, value, onChange, tooltip }) {
   }, [open])
   const range = typeof value === 'object' && value ? value : null
   const active = Boolean(value && (typeof value !== 'object' || value.from || value.to))
-  const PRESETS = [[7, 'Τελευταία εβδομάδα'], [30, 'Τελευταίος μήνας'], [90, 'Τελευταίο τρίμηνο'],
+  const PAST = [[7, 'Τελευταία εβδομάδα'], [30, 'Τελευταίος μήνας'], [90, 'Τελευταίο τρίμηνο'],
     [180, 'Τελευταίο εξάμηνο'], [365, 'Τελευταίο έτος']]
+  const NEXT = [[-7, 'Επόμενη εβδομάδα'], [-30, 'Επόμενος μήνας'], [-90, 'Επόμενο τρίμηνο'],
+    [-180, 'Επόμενο εξάμηνο'], [-365, 'Επόμενο έτος']]
   return (
     <div className="mfilter" ref={ref}>
       <button className="btn" title={tooltip} onClick={() => setOpen((o) => !o)}>
         {label}{active ? ' (1)' : ''} ▾
       </button>
       {open && (
-        <div className="pop" style={{ minWidth: 240 }}>
+        <div className="pop" style={{ minWidth: 250, maxHeight: 'none', overflow: 'visible' }}>
           {active && (
-            <label style={{ color: 'var(--accent)' }} onClick={() => { onChange(null); setCustom('') }}>Clear</label>
+            <label style={{ color: 'var(--accent)' }}
+              onClick={() => { onChange(null); setCustomPast(''); setCustomNext('') }}>Clear</label>
           )}
+          {/* 1. Όλες */}
           <label><input type="radio" checked={!active} onChange={() => onChange(null)} />Όλες οι ημερομηνίες</label>
-          {PRESETS.map(([d, l]) => (
-            <label key={d}><input type="radio" checked={value === d} onChange={() => onChange(d)} />{l}</label>
-          ))}
-          <label>
-            <input type="radio" checked={Boolean(custom) && value === Number(custom)}
-              onChange={() => custom && onChange(Number(custom))} />
-            Τελευταίες
-            <input type="number" min="1" className="filterpop-days" value={custom}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => { setCustom(e.target.value); onChange(e.target.value ? Number(e.target.value) : null) }} />
-            ημέρες
-          </label>
+          {/* 2. Από – Έως */}
           <label><input type="radio" checked={Boolean(range)} onChange={() => onChange({ from: '', to: '' })} />Από – Έως</label>
           <div className="filterpop-range-inputs" style={{ padding: '2px 8px 6px' }}>
             <input type="date" title="Από" value={range?.from ?? ''} onClick={(e) => e.stopPropagation()}
@@ -673,6 +672,32 @@ export function DateFilter({ label, value, onChange, tooltip }) {
             <input type="date" title="Έως" value={range?.to ?? ''} onClick={(e) => e.stopPropagation()}
               onChange={(e) => onChange({ ...(range ?? {}), to: e.target.value })} />
           </div>
+          {/* 3. Παρελθόν (6 επιλογές) */}
+          {PAST.map(([d, l]) => (
+            <label key={d}><input type="radio" checked={value === d} onChange={() => onChange(d)} />{l}</label>
+          ))}
+          <label>
+            <input type="radio" checked={Boolean(customPast) && value === Number(customPast)}
+              onChange={() => customPast && onChange(Number(customPast))} />
+            Τελευταίες
+            <input type="number" min="1" className="filterpop-days" value={customPast}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => { setCustomPast(e.target.value); setCustomNext(''); onChange(e.target.value ? Number(e.target.value) : null) }} />
+            ημέρες
+          </label>
+          {/* 4. Μέλλον (6 επιλογές) */}
+          {NEXT.map(([d, l]) => (
+            <label key={d}><input type="radio" checked={value === d} onChange={() => onChange(d)} />{l}</label>
+          ))}
+          <label>
+            <input type="radio" checked={Boolean(customNext) && value === -Number(customNext)}
+              onChange={() => customNext && onChange(-Number(customNext))} />
+            Επόμενες
+            <input type="number" min="1" className="filterpop-days" value={customNext}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => { setCustomNext(e.target.value); setCustomPast(''); onChange(e.target.value ? -Number(e.target.value) : null) }} />
+            ημέρες
+          </label>
         </div>
       )}
     </div>
