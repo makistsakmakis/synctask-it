@@ -12,6 +12,7 @@ import ProjectsPage from './pages/ProjectsPage'
 import ProjectDetail from './pages/ProjectDetail'
 import ProjectForm from './pages/ProjectForm'
 import Diag from './pages/Diag'
+import ProjectImport from './pages/ProjectImport'
 
 const SessionCtx = createContext(null)
 export const useSession = () => useContext(SessionCtx)
@@ -143,6 +144,7 @@ export default function App() {
             <Route path="/kanban" element={<Navigate to="/overview/tasks" replace />} />
             <Route path="/kanban/projects" element={<Navigate to="/overview/projects" replace />} />
             <Route path="/diag" element={<Diag />} />
+            <Route path="/import" element={profile.role === 'admin' ? <ProjectImport /> : <Navigate to="/projects" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Shell>

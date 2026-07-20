@@ -16,6 +16,9 @@ const RACI_TOOLTIPS = {
 }
 
 const PROJ_COLUMNS = [
+  { key: 'id', label: '#', tooltip: 'Project Number (autonumber)',
+    render: (p) => <span className="mono">{p.id}</span>,
+    text: (p) => p.id },
   {
     key: 'title', label: 'Title',
     render: (p) => (
@@ -28,7 +31,6 @@ const PROJ_COLUMNS = [
   { key: 'owner',      label: 'Owner',      render: (p) => p.owner      || '—' },
   { key: 'supervisor', label: 'Supervisor',  render: (p) => p.supervisor || '—' },
   { key: 'status',     label: 'Status',      render: (p) => <StatusBadge status={p.status} />, text: (p) => p.status ?? '' },
-  { key: 'product',    label: 'Product',     render: (p) => p.product    || '—' },
   { key: 'start_date', label: 'Start',       render: (p) => <span className="mono">{fmtDate(p.start_date)}</span>, text: (p) => fmtDate(p.start_date) },
   { key: 'deadline',   label: 'Deadline',    render: (p) => <span className="mono">{fmtDate(p.deadline)}</span>,   text: (p) => fmtDate(p.deadline) },
   { key: 'responsible', label: 'R-esponsible', tooltip: RACI_TOOLTIPS.responsible,

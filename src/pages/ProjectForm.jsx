@@ -166,7 +166,7 @@ export default function ProjectForm() {
     <>
       <div className="pagehead">
         <div>
-          <h1>{editing ? 'Edit project' : 'New project'}</h1>
+          <h1>{editing ? <>Edit project <span style={{ color: 'var(--accent)' }}>#{id}</span></> : 'New project'}</h1>
           <div className="sub">
             {isReadOnly ? 'Read-only view.'
               : editing ? 'Update project details.'
