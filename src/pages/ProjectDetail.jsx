@@ -60,7 +60,9 @@ export default function ProjectDetail() {
 
       <div className="card" style={{ padding: 18, marginBottom: 18 }}>
         <div className="fields">
+          <F k="Project No" v={`#${p.id}`} mono />
           <F k="Owner" v={p.owner} />
+          <F k="Supervisor" v={p.supervisor} />
           <F k="Status" v={p.status} />
           <F k="Product" v={p.product} />
           <F k="Start date" v={fmtDate(p.start_date)} mono />
@@ -68,6 +70,17 @@ export default function ProjectDetail() {
           <F k="Proposed start" v={fmtDate(p.proposed_start)} mono />
           <F k="Deadline" v={fmtDate(p.deadline)} mono />
           <F k="Link" v={p.link} />
+        </div>
+
+        {/* RACI */}
+        <div className="raci-box">
+          <h3>RACI</h3>
+          <div className="fields">
+            <F k="Responsible (R)" v={(p.responsible ?? []).join(', ')} />
+            <F k="Accountable (A)" v={(p.accountable ?? []).join(', ')} />
+            <F k="Consulted (C)" v={(p.consulted ?? []).join(', ')} />
+            <F k="Informed (I)" v={(p.informed ?? []).join(', ')} />
+          </div>
         </div>
         {p.notes && (
           <div className="notesblock" style={{ marginTop: 12 }}>
