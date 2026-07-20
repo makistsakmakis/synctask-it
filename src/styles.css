@@ -71,6 +71,9 @@ button { font-family: var(--font-body); cursor: pointer; }
   background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.14); padding: 6px; }
 .mfilter .pop label { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; white-space: nowrap; }
 .mfilter .pop label:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.mfilter .pop label input[type="checkbox"] { margin: 0; flex-shrink: 0; width: auto;
+  accent-color: var(--accent); cursor: pointer; }
+.mfilter .pop label { justify-content: flex-start; text-align: left; }
 .ctitle { display: block; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 
 /* % Complete: το πεδίο γεμίζει σαν μπάρα με βάση την τιμή */
