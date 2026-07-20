@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime, sanitizeHtml } from '../lib/meta'
-import { DateInput, RichTextEditor, MultiPersonSelect } from '../components/ui'
+import { DateInput, RichTextEditor, MultiPersonSelect, AttachmentsPanel } from '../components/ui'
+import { LISTS } from '../lib/sp'
 import { fetchProject, createProject, updateProject, fetchProjectStatuses } from '../lib/projects'
 import { fetchUserOptions, fetchManagers, fetchResourceOptions } from '../lib/api'
 
@@ -339,6 +340,8 @@ export default function ProjectForm() {
             ))}
           </div>
         </div>
+
+        {editing && <AttachmentsPanel listName={LISTS.projects} itemId={id} canEdit={!isReadOnly} />}
 
         {editing && audit && (
           <div className="auditbox">

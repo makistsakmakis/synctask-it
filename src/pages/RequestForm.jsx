@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime, sanitizeHtml } from '../lib/meta'
-import { DateInput, RichTextEditor } from '../components/ui'
+import { DateInput, RichTextEditor, AttachmentsPanel } from '../components/ui'
+import { LISTS } from '../lib/sp'
 import {
   fetchRequest, createRequest, updateRequest,
   fetchProjectOptions, fetchTagOptions, fetchUserOptions,
@@ -237,6 +238,8 @@ export default function RequestForm() {
             </div>
           </div>
         )}
+
+        {editing && <AttachmentsPanel listName={LISTS.requests} itemId={id} canEdit={!isReadOnly} />}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
           <button className="btn" onClick={() => nav(-1)} disabled={busy}>

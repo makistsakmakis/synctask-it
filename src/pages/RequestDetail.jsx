@@ -38,11 +38,14 @@ export default function RequestDetail() {
   return (
     <>
       <div className="pagehead">
-        <div>
-          <div className="mono" style={{ color: 'var(--ink-soft)' }}>{r.reference_number}</div>
-          <h1>{r.title}</h1>
-          <div className="sub" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
-            <StatusBadge status={r.status} /> <Flags r={r} /> · {r.priority} priority · {r.request_type}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <img src="/task-icon.svg" alt="" className="task-icon" />
+          <div>
+            <div className="mono" style={{ color: 'var(--ink-soft)' }}>{r.reference_number}</div>
+            <h1>{r.title}</h1>
+            <div className="sub" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
+              <StatusBadge status={r.status} /> <Flags r={r} /> · {r.priority} priority · {r.request_type}
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -64,7 +67,9 @@ export default function RequestDetail() {
             <F k="Approver" v={r.approver?.name ?? '—'} />
             <F k="Assigned to" v={r.assigned_to ?? '—'} />
             <F k="Project" v={r.project_name ?? '—'} />
-            <F k="Tag" v={r.tag_name ?? '—'} />
+            <F k="Tag" v={r.tag_name
+              ? <span className="badge" style={{ background: r.tag_color || '#6b7280', color: '#fff' }}>{r.tag_name}</span>
+              : '—'} />
             <F k="Status" v={r.status} />
             <F k="Priority" v={r.priority} />
             <F k="Type" v={r.request_type} />

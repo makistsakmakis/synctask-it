@@ -46,6 +46,22 @@ export async function signOut() {
   await msal.logoutRedirect({ account })
 }
 
+// Token για το SharePoint REST API (τα συνημμένα των list items δεν εκτίθενται στο Graph)
+const SP_HOST = import.meta.env.VITE_SP_HOSTNAME
+export async function getSpToken() {
+  await ensure()
+  const account = await getAccount()
+  if (!account) throw new Error('Not signed in')
+  const scopes = [`https://${SP_HOST}/AllSites.Manage`]
+  try {
+    const res = await msal.acquireTokenSilent({ scopes, account })
+    return res.accessToken
+  } catch {
+    await msal.acquireTokenRedirect({ scopes }) // page navigates away
+    return null
+  }
+}
+
 export async function getToken() {
   await ensure()
   const account = await getAccount()

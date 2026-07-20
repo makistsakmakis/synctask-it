@@ -13,7 +13,20 @@ const emailOf = (u, personId) => (u.get(String(personId))?.email ?? '')
 let _projectsP = null
 function projectMap() { return (_projectsP ??= getTitleMap(PROJECTS_LIST).catch(() => new Map())) }
 let _tagsP = null
-function tagMap() { return (_tagsP ??= getTitleMap(TAGS_LIST).catch(() => new Map())) }
+function tagMap() { return (_tagsP ??= loadTagMap()) }
+// Tags list: Title + χρώμα (εντοπίζεται αυτόματα όποια στήλη περιέχει 'color')
+async function loadTagMap() {
+  try {
+    const items = await listItems(TAGS_LIST)
+    const m = new Map()
+    for (const it of items) {
+      const f = it.fields ?? {}
+      const colorKey = Object.keys(f).find((k) => k.toLowerCase().includes('color') || k.toLowerCase().includes('colour'))
+      m.set(String(it.id), { title: f.Title ?? '', color: colorKey ? String(f[colorKey] ?? '').trim() : '' })
+    }
+    return m
+  } catch { return new Map() }
+}
 
 // Option lists for editable dropdowns (Owner/AssignedTo, Project, Tag).
 export async function fetchUserOptions() {
@@ -30,7 +43,7 @@ export async function fetchProjectOptions() {
 }
 export async function fetchTagOptions() {
   const m = await tagMap()
-  return [...m.entries()].map(([id, title]) => ({ id: String(id), title }))
+  return [...m.entries()].map(([id, v]) => ({ id: String(id), title: v.title }))
     .filter((o) => o.title).sort((a, b) => a.title.localeCompare(b.title))
 }
 
@@ -86,7 +99,9 @@ async function shape(item) {
     : []
 
   r.project_name = projects.get(String(r.project_id)) ?? null
-  r.tag_name     = tags.get(String(r.tag_id))         ?? null
+  const tagInfo  = tags.get(String(r.tag_id))
+  r.tag_name     = tagInfo?.title ?? null
+  r.tag_color    = tagInfo?.color ?? ''
   return r
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { STATUS_COLOR, STATUSES, QUICK_FILTERS, isAssigned, isOverdue, exportXLSX } from '../lib/meta'
+import { getAttachments, addAttachment, deleteAttachment } from '../lib/sp'
 
 // Date field: masked dd/mm/yyyy text entry + calendar picker button.
 // Stores/returns ISO yyyy-mm-dd ('' when empty/incomplete).
@@ -151,6 +152,9 @@ function colText(col, row) {
   return v == null ? '' : String(v)
 }
 
+// Ενεργό date filter: αριθμός ημερών ή range με τουλάχιστον ένα άκρο
+const dateActive = (d) => Boolean(d && (typeof d !== 'object' || d.from || d.to))
+
 export function DataGrid({
   rows, columns, onRowClick, emptyHint,
   filename = 'export.xlsx',
@@ -233,15 +237,25 @@ export function DataGrid({
       if (!col) continue
       out = out.filter((r) => colText(col, r).toLowerCase().includes(t))
     }
-    for (const [key, days] of Object.entries(dateFilters)) {
-      const n = Number(days)
-      if (!n || n <= 0) continue
-      const from = new Date(); from.setHours(0, 0, 0, 0); from.setDate(from.getDate() - n)
-      const fromIso = from.toISOString().slice(0, 10)
-      const todayIso = new Date().toISOString().slice(0, 10)
+    for (const [key, dv] of Object.entries(dateFilters)) {
+      if (!dateActive(dv)) continue
+      let fromIso = null, toIso = null
+      if (typeof dv === 'object') {
+        fromIso = dv.from || null
+        toIso = dv.to || null
+      } else {
+        const n = Number(dv)
+        if (!n || n <= 0) continue
+        const from = new Date(); from.setHours(0, 0, 0, 0); from.setDate(from.getDate() - n)
+        fromIso = from.toISOString().slice(0, 10)
+        toIso = new Date().toISOString().slice(0, 10)
+      }
       out = out.filter((r) => {
         const v = String(r[key] ?? '').slice(0, 10)
-        return v && v >= fromIso && v <= todayIso
+        if (!v) return false
+        if (fromIso && v < fromIso) return false
+        if (toIso && v > toIso) return false
+        return true
       })
     }
     return out
@@ -266,7 +280,7 @@ export function DataGrid({
 
   const hasColFilters = Object.values(colFilters).some((s) => s && s.size > 0)
     || Object.values(textFilters).some((t) => t && t.trim())
-    || Object.values(dateFilters).some(Boolean)
+    || Object.values(dateFilters).some(dateActive)
 
   const clearAllFilters = () => {
     setColFilters({}); setTextFilters({}); setDateFilters({}); setCustomDays({})
@@ -324,6 +338,9 @@ export function DataGrid({
   const allChecked = !openSel || openSel.size === 0
   const isChecked = (v) => allChecked ? true : openSel.has(NONE) ? false : openSel.has(v)
 
+  const openRange = openFilter && typeof dateFilters[openFilter] === 'object' && dateFilters[openFilter]
+    ? dateFilters[openFilter] : null
+
   const DATE_PRESETS = [
     [7, 'Τελευταία εβδομάδα'], [30, 'Τελευταίος μήνας'], [90, 'Τελευταίο τρίμηνο'],
     [180, 'Τελευταίο εξάμηνο'], [365, 'Τελευταίο έτος'],
@@ -370,7 +387,7 @@ export function DataGrid({
                   {railKey && <th style={{ width: 4, padding: 0 }} />}
                   {columns.map((col) => {
                     const filterActive = (colFilters[col.key]?.size ?? 0) > 0
-                      || Boolean((textFilters[col.key] ?? '').trim()) || Boolean(dateFilters[col.key])
+                      || Boolean((textFilters[col.key] ?? '').trim()) || dateActive(dateFilters[col.key])
                     const sortDir = sort?.key === col.key ? sort.dir : null
                     return (
                       <th key={col.key} className={col.noSort ? '' : 'sortable'} onClick={() => clickSort(col)}>
@@ -425,7 +442,7 @@ export function DataGrid({
             /* Date column: έτοιμα φίλτρα περιόδου + Χ ημέρες */
             <div className="filterpop-list">
               <label className="filterpop-item" onClick={(e) => e.stopPropagation()}>
-                <input type="radio" checked={!dateFilters[openFilter]}
+                <input type="radio" checked={!dateActive(dateFilters[openFilter])}
                   onChange={() => setDateFilters((p) => ({ ...p, [openFilter]: null }))} />
                 <span>Όλες οι ημερομηνίες</span>
               </label>
@@ -451,6 +468,20 @@ export function DataGrid({
                   }} />
                 <span>ημέρες</span>
               </label>
+              {/* Από – Έως με ημερολόγιο */}
+              <div className="filterpop-range" onClick={(e) => e.stopPropagation()}>
+                <label>
+                  <input type="radio" checked={Boolean(openRange)}
+                    onChange={() => setDateFilters((p) => ({ ...p, [openFilter]: { from: '', to: '' } }))} />
+                  <span>Από – Έως</span>
+                </label>
+                <div className="filterpop-range-inputs">
+                  <input type="date" title="Από" value={openRange?.from ?? ''}
+                    onChange={(e) => setDateFilters((p) => ({ ...p, [openFilter]: { ...(openRange ?? {}), from: e.target.value } }))} />
+                  <input type="date" title="Έως" value={openRange?.to ?? ''}
+                    onChange={(e) => setDateFilters((p) => ({ ...p, [openFilter]: { ...(openRange ?? {}), to: e.target.value } }))} />
+                </div>
+              </div>
             </div>
           ) : (
             /* Choice column: checkboxes + toggle επιλογής/αποεπιλογής όλων */
@@ -645,6 +676,66 @@ export function ProjectsKanban({ rows }) {
           ))}
         </div>
       ))}
+    </div>
+  )
+}
+
+// ── Συνημμένα list item (SharePoint REST — το Graph δεν εκθέτει attachments) ──
+export function AttachmentsPanel({ listName, itemId, canEdit = true }) {
+  const [files, setFiles] = useState(null)
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+  const fileRef = useRef(null)
+
+  const load = () => getAttachments(listName, itemId)
+    .then((f) => { setFiles(f); setErr('') })
+    .catch((e) => { setFiles([]); setErr(e.message ?? 'Αποτυχία φόρτωσης συνημμένων.') })
+
+  useEffect(() => { if (itemId) load() }, [itemId])
+
+  const upload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setBusy(true); setErr('')
+    try { await addAttachment(listName, itemId, file); await load() }
+    catch (er) { setErr(er.message ?? 'Αποτυχία μεταφόρτωσης.') }
+    setBusy(false)
+    e.target.value = ''
+  }
+
+  const del = async (name) => {
+    setBusy(true); setErr('')
+    try { await deleteAttachment(listName, itemId, name); await load() }
+    catch (er) { setErr(er.message ?? 'Αποτυχία διαγραφής.') }
+    setBusy(false)
+  }
+
+  return (
+    <div className="attachbox">
+      <h3>Συνημμένα{files ? ` (${files.length})` : ''}</h3>
+      {err && <div className="err">{err}</div>}
+      {files == null
+        ? <div style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Φόρτωση…</div>
+        : files.length === 0
+          ? <div style={{ color: 'var(--ink-soft)', fontSize: 13, marginBottom: 10 }}>Δεν υπάρχουν συνημμένα.</div>
+          : (
+            <ul>
+              {files.map((f) => (
+                <li key={f.name}>
+                  <a href={f.url} target="_blank" rel="noreferrer">📎 {f.name}</a>
+                  {canEdit && <button type="button" className="del" title="Διαγραφή" disabled={busy} onClick={() => del(f.name)}>✕</button>}
+                </li>
+              ))}
+            </ul>
+          )}
+      {canEdit && (
+        <>
+          <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={upload} />
+          <button type="button" className="btn sm" disabled={busy} onClick={() => fileRef.current?.click()}>
+            {busy ? 'Εργασία…' : '+ Προσθήκη αρχείου'}
+          </button>
+        </>
+      )}
     </div>
   )
 }

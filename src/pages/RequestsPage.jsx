@@ -12,6 +12,11 @@ const priority = { key: 'priority', label: 'Priority', render: (r) => r.priority
 const requestor = { key: 'requestor_name', label: 'Requestor', render: (r) => r.requestor_name ?? '—' }
 const assigned = { key: 'assigned_to', label: 'Assigned to', render: (r) => r.assigned_to ?? '—' }
 const project  = { key: 'project_name', label: 'Project', render: (r) => r.project_name ?? '—' }
+const tag      = { key: 'tag_name', label: 'Tag',
+  render: (r) => r.tag_name
+    ? <span className="badge" style={{ background: r.tag_color || '#6b7280', color: '#fff' }}>{r.tag_name}</span>
+    : '—',
+  text: (r) => r.tag_name ?? '' }
 const golive   = { key: 'golive_required', label: 'Due', ftype: 'date',
   render: (r) => <span className="mono">{fmtDate(r.golive_required)}</span>,
   text: (r) => fmtDate(r.golive_required) }
@@ -26,22 +31,22 @@ const VIEWS = {
   requestor: {
     title: 'My project tasks', sub: 'Tasks under your projects (view only).',
     filters: FILTERS,
-    columns: [title, project, status, assigned, priority, golive, expStart, flags],
+    columns: [title, project, tag, status, assigned, priority, golive, expStart, flags],
   },
   manager: {
     title: 'Supervised project tasks', sub: 'Tasks under projects you supervise (view only).',
     filters: FILTERS,
-    columns: [title, project, requestor, status, assigned, priority, golive, flags],
+    columns: [title, project, tag, requestor, status, assigned, priority, golive, flags],
   },
   resource: {
     title: 'Assigned to me', sub: 'Tasks assigned to you.',
     filters: FILTERS,
-    columns: [title, project, status, priority, expStart, requestor, flags],
+    columns: [title, project, tag, status, priority, expStart, requestor, flags],
   },
   admin: {
     title: 'Tasks', sub: 'Full operational list of tasks.',
     filters: FILTERS,
-    columns: [title, requestor, assigned, project, status, priority, golive, expStart, flags],
+    columns: [title, requestor, assigned, project, tag, status, priority, golive, expStart, flags],
   },
 }
 

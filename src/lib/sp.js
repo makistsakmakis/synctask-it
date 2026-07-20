@@ -1,4 +1,4 @@
-import { getToken } from './auth'
+import { getToken, getSpToken } from './auth'
 
 const HOST = import.meta.env.VITE_SP_HOSTNAME            // inventorac.sharepoint.com
 const SITE_PATH = import.meta.env.VITE_SP_SITE_PATH      // /sites/ProjectManagement/Development
@@ -232,4 +232,39 @@ export async function getTitleMap(listName) {
   const m = new Map()
   for (const it of items) m.set(String(it.id), it.fields?.Title ?? '')
   return m
+}
+
+// ── List item attachments — SharePoint REST (το Graph δεν τα εκθέτει) ─────────
+async function spFetch(path, { method = 'GET', body, headers } = {}) {
+  const token = await getSpToken()
+  const res = await fetch(`https://${HOST}${SITE_PATH}/_api${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json;odata=nometadata', ...headers },
+    body,
+  })
+  if (!res.ok) {
+    let msg = `SharePoint error ${res.status}`
+    try {
+      const d = await res.json()
+      msg = d?.error?.message?.value ?? d?.['odata.error']?.message?.value ?? msg
+    } catch { /* keep default */ }
+    throw new Error(msg)
+  }
+  if (res.status === 204) return null
+  return res.json().catch(() => null)
+}
+
+export async function getAttachments(listName, itemId) {
+  const d = await spFetch(`/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles`)
+  return (d?.value ?? []).map((f) => ({ name: f.FileName, url: `https://${HOST}${f.ServerRelativeUrl}` }))
+}
+
+export async function addAttachment(listName, itemId, file) {
+  const buf = await file.arrayBuffer()
+  const safe = encodeURIComponent(file.name.replace(/'/g, ''))
+  return spFetch(`/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles/add(FileName='${safe}')`, { method: 'POST', body: buf })
+}
+
+export async function deleteAttachment(listName, itemId, fileName) {
+  return spFetch(`/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles/getByFileName('${encodeURIComponent(fileName)}')`, { method: 'POST', headers: { 'X-HTTP-Method': 'DELETE' } })
 }
