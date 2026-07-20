@@ -72,7 +72,7 @@ export default function RequestDetail() {
             <F k="Due date" v={fmtDate(r.golive_required)} mono />
             <F k="Actual Start Date" v={fmtDate(r.expected_start)} mono />
             <F k="Actual end" v={fmtDate(r.actual_completion)} mono />
-            <F k="% complete" v={r.percent_complete ?? '—'} mono />
+            <F k="% complete" v={r.percent_complete != null ? `${r.percent_complete}%` : '—'} mono />
             <F k="Estimated man-hours" v={r.estimated_manhours ?? '—'} mono />
             <F k="Actual man-hours" v={r.actual_manhours ?? '—'} mono />
             <F k="Product" v={r.product ?? '—'} />

@@ -68,6 +68,9 @@ export const toSP = (appFields) => {
     if (!col || col.startsWith('__none_')) continue // never write phantom columns
     if (col.endsWith('LookupId')) {
       out[col] = v === '' || v == null ? null : Number(v)
+    } else if (k === 'percent_complete') {
+      // SharePoint percentage column stores a FRACTION (0.5 = 50%).
+      out[col] = v === '' || v == null ? null : Number(v) / 100
     } else {
       out[col] = v === '' ? null : v
     }
@@ -82,6 +85,14 @@ export const fromSP = (item) => {
     r[k] = col.startsWith('__none_') ? null : (f[col] ?? null)
   }
   if (r.coo_prioritization == null) r.coo_prioritization = 99999999
+
+  // percent_complete: fraction (0.5 = 50%) -> UI 0-100; >1 = legacy whole percent
+  if (r.percent_complete != null && r.percent_complete !== '') {
+    const raw = Number(r.percent_complete)
+    r.percent_complete = Number.isFinite(raw)
+      ? Math.min(100, Math.max(0, Math.round(raw > 1 ? raw : raw * 100)))
+      : null
+  }
 
   // implementor_notes maps to the 'Notes' rich-text column — decode SharePoint HTML wrapper
   if (typeof r.implementor_notes === 'string' && r.implementor_notes) {
