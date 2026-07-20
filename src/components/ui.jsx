@@ -349,7 +349,7 @@ export function DataGrid({
 
   return (
     <>
-      {/* Ενιαία γραμμή: slicer + φίλτρα + αναζήτηση + export (χωρίς 2η σειρά) */}
+      {/* Γραμμή 1: slicer + αναίρεση φίλτρων + αναζήτηση */}
       <div className="toolbar">
         {chips && (
           <div className="chips">
@@ -359,21 +359,24 @@ export function DataGrid({
           </div>
         )}
         {hasColFilters && (
-          <button className="btn" onClick={clearAllFilters}>✕ Αναίρεση φίλτρων</button>
+          <button className="btn sm" onClick={clearAllFilters}>✕ Αναίρεση φίλτρων</button>
         )}
         <div className="spacer" />
         <input className="search" placeholder="Αναζήτηση…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <span className="grid-count">{sorted.length} εγγραφές</span>
-        <button className="btn" onClick={doExport}>⬇ Export Excel</button>
       </div>
-      {/* Σελιδοποίηση — πάνω αριστερά από το grid */}
-      {sorted.length > 0 && (
-        <div className="pager">
-          <button className="btn sm" disabled={curPage === 0} onClick={() => setPage(curPage - 1)} title="Προηγούμενη σελίδα">‹</button>
-          <span>Σελίδα {curPage + 1} / {pageCount}</span>
-          <button className="btn sm" disabled={curPage >= pageCount - 1} onClick={() => setPage(curPage + 1)} title="Επόμενη σελίδα">›</button>
-        </div>
-      )}
+      {/* Γραμμή 2: σελιδοποίηση αριστερά · εγγραφές + export δεξιά (ίδιο ύψος) */}
+      <div className="pager">
+        {sorted.length > 0 && (
+          <>
+            <button className="btn sm" disabled={curPage === 0} onClick={() => setPage(curPage - 1)} title="Προηγούμενη σελίδα">‹</button>
+            <span>Σελίδα {curPage + 1} / {pageCount}</span>
+            <button className="btn sm" disabled={curPage >= pageCount - 1} onClick={() => setPage(curPage + 1)} title="Επόμενη σελίδα">›</button>
+          </>
+        )}
+        <div className="spacer" />
+        <span className="grid-count">{sorted.length} εγγραφές</span>
+        <button className="btn sm" onClick={doExport}>⬇ Export Excel</button>
+      </div>
       <div className="card">
         {visible.length === 0 ? (
           <div className="empty">{emptyHint ?? 'Δεν βρέθηκαν αποτελέσματα.'}</div>
