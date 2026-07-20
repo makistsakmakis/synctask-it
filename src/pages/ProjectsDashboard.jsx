@@ -1,29 +1,32 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchProjects } from '../lib/projects'
+import { DateFilter, dateMatches } from '../components/ui'
 
 export default function ProjectsDashboard() {
   const [rows, setRows] = useState([])
+  const [dl, setDl] = useState(null)
   useEffect(() => { fetchProjects().then(setRows).catch(console.error) }, [])
+  const visible = useMemo(() => rows.filter((p) => dateMatches(dl, p.deadline)), [rows, dl])
 
   const today = new Date(new Date().toDateString())
   const isDone = (p) => /complete|done|closed/i.test(p.status || '')
   const k = useMemo(() => ({
-    total: rows.length,
-    active: rows.filter((p) => !isDone(p)).length,
-    completed: rows.filter(isDone).length,
-    overdue: rows.filter((p) => !isDone(p) && p.deadline && new Date(p.deadline) < today).length,
+    total: visible.length,
+    active: visible.filter((p) => !isDone(p)).length,
+    completed: visible.filter(isDone).length,
+    overdue: visible.filter((p) => !isDone(p) && p.deadline && new Date(p.deadline) < today).length,
   }), [rows])
 
   const byStatus = useMemo(() => {
     const m = new Map()
-    for (const p of rows) m.set(p.status || '—', (m.get(p.status || '—') ?? 0) + 1)
+    for (const p of visible) m.set(p.status || '—', (m.get(p.status || '—') ?? 0) + 1)
     return [...m.entries()].map(([label, n]) => ({ label, n })).sort((a, b) => b.n - a.n)
-  }, [rows])
+  }, [visible])
   const byOwner = useMemo(() => {
     const m = new Map()
-    for (const p of rows) m.set(p.owner || '—', (m.get(p.owner || '—') ?? 0) + 1)
+    for (const p of visible) m.set(p.owner || '—', (m.get(p.owner || '—') ?? 0) + 1)
     return [...m.entries()].map(([label, n]) => ({ label, n })).sort((a, b) => b.n - a.n)
-  }, [rows])
+  }, [visible])
   const max = Math.max(1, ...byStatus.map((b) => b.n), ...byOwner.map((b) => b.n))
 
   const Bars = ({ title, items }) => (
@@ -44,6 +47,12 @@ export default function ProjectsDashboard() {
 
   return (
     <>
+      <div className="toolbar">
+        <div className="chips" style={{ gap: 8 }}>
+          <DateFilter label="Deadline" value={dl} onChange={setDl} />
+        </div>
+        <div className="spacer" />
+      </div>
       <div className="kpis">
         <div className="kpi"><div className="n">{k.total}</div><div className="l">Total projects</div></div>
         <div className="kpi"><div className="n">{k.active}</div><div className="l">Active</div></div>

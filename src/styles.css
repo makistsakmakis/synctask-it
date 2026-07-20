@@ -357,3 +357,6 @@ input:disabled, select:disabled, textarea:disabled { background: #f3f4f1; color:
   max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .racimx tbody tr { cursor: pointer; }
 .racimx tbody tr:hover td.rowtitle { background: #f2f6fb; }
+
+.mfilter .pop label input[type="radio"] { width: auto; flex-shrink: 0; margin: 0;
+  accent-color: var(--accent); cursor: pointer; }

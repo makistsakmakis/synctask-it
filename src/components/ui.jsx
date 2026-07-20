@@ -607,6 +607,78 @@ export function MultiPersonSelect({ options, value, onChange, disabled }) {
   )
 }
 
+// Έλεγχος αν μια ημερομηνία (ISO) περνά ένα date filter (ημέρες πίσω ή {from,to})
+export const dateMatches = (dv, iso) => {
+  if (!dv || (typeof dv === 'object' && !dv.from && !dv.to)) return true
+  const v = String(iso ?? '').slice(0, 10)
+  if (!v) return false
+  let fromIso = null, toIso = null
+  if (typeof dv === 'object') {
+    fromIso = dv.from || null
+    toIso = dv.to || null
+  } else {
+    const from = new Date(); from.setHours(0, 0, 0, 0); from.setDate(from.getDate() - Number(dv))
+    fromIso = from.toISOString().slice(0, 10)
+    toIso = new Date().toISOString().slice(0, 10)
+  }
+  if (fromIso && v < fromIso) return false
+  if (toIso && v > toIso) return false
+  return true
+}
+
+// Dropdown φίλτρου ημερομηνίας για τα Overviews — ίδια λογική με τα date filters
+// των grid (presets, Χ ημέρες, Από–Έως με ημερολόγιο).
+// value: null | number (ημέρες πίσω) | { from, to }
+export function DateFilter({ label, value, onChange, tooltip }) {
+  const [open, setOpen] = useState(false)
+  const [custom, setCustom] = useState('')
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  const range = typeof value === 'object' && value ? value : null
+  const active = Boolean(value && (typeof value !== 'object' || value.from || value.to))
+  const PRESETS = [[7, 'Τελευταία εβδομάδα'], [30, 'Τελευταίος μήνας'], [90, 'Τελευταίο τρίμηνο'],
+    [180, 'Τελευταίο εξάμηνο'], [365, 'Τελευταίο έτος']]
+  return (
+    <div className="mfilter" ref={ref}>
+      <button className="btn" title={tooltip} onClick={() => setOpen((o) => !o)}>
+        {label}{active ? ' (1)' : ''} ▾
+      </button>
+      {open && (
+        <div className="pop" style={{ minWidth: 240 }}>
+          {active && (
+            <label style={{ color: 'var(--accent)' }} onClick={() => { onChange(null); setCustom('') }}>Clear</label>
+          )}
+          <label><input type="radio" checked={!active} onChange={() => onChange(null)} />Όλες οι ημερομηνίες</label>
+          {PRESETS.map(([d, l]) => (
+            <label key={d}><input type="radio" checked={value === d} onChange={() => onChange(d)} />{l}</label>
+          ))}
+          <label>
+            <input type="radio" checked={Boolean(custom) && value === Number(custom)}
+              onChange={() => custom && onChange(Number(custom))} />
+            Τελευταίες
+            <input type="number" min="1" className="filterpop-days" value={custom}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => { setCustom(e.target.value); onChange(e.target.value ? Number(e.target.value) : null) }} />
+            ημέρες
+          </label>
+          <label><input type="radio" checked={Boolean(range)} onChange={() => onChange({ from: '', to: '' })} />Από – Έως</label>
+          <div className="filterpop-range-inputs" style={{ padding: '2px 8px 6px' }}>
+            <input type="date" title="Από" value={range?.from ?? ''} onClick={(e) => e.stopPropagation()}
+              onChange={(e) => onChange({ ...(range ?? {}), from: e.target.value })} />
+            <input type="date" title="Έως" value={range?.to ?? ''} onClick={(e) => e.stopPropagation()}
+              onChange={(e) => onChange({ ...(range ?? {}), to: e.target.value })} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function MultiFilter({ label, options, value, onChange, tooltip }) {
   const [open, setOpen] = useState(false)
   const toggle = (v) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v])

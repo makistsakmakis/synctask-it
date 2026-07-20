@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchRequests } from '../lib/api'
-import { Kanban, MultiFilter } from '../components/ui'
+import { Kanban, MultiFilter, DateFilter, dateMatches } from '../components/ui'
 
 export default function KanbanPage() {
   const [rows, setRows] = useState([])
   const [assignees, setAssignees] = useState([])
   const [tags, setTags] = useState([])
+  const [dl, setDl] = useState(null)
   useEffect(() => { fetchRequests().then(setRows).catch(console.error) }, [])
 
   const assigneeOpts = useMemo(() =>
@@ -17,7 +18,8 @@ export default function KanbanPage() {
 
   const visible = rows.filter((r) =>
     (assignees.length === 0 || assignees.includes(r.assigned_to)) &&
-    (tags.length === 0 || tags.includes(r.tag_name)))
+    (tags.length === 0 || tags.includes(r.tag_name)) &&
+    dateMatches(dl, r.golive_required))
 
   return (
     <>
@@ -25,6 +27,7 @@ export default function KanbanPage() {
         <div className="chips" style={{ gap: 8 }}>
           <MultiFilter label="Assignee" options={assigneeOpts} value={assignees} onChange={setAssignees} />
           <MultiFilter label="Tag" options={tagOpts} value={tags} onChange={setTags} />
+          <DateFilter label="Deadline" tooltip="Due date του task" value={dl} onChange={setDl} />
         </div>
         <div className="spacer" />
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchProjects } from '../lib/projects'
-import { ProjectsKanban as Board, MultiFilter } from '../components/ui'
+import { ProjectsKanban as Board, MultiFilter, DateFilter, dateMatches } from '../components/ui'
 
 const RACI_TOOLTIPS = {
   responsible: 'Responsible (R): The person or team who actually does the work to complete the task. They are responsible for driving the work to completion.',
@@ -21,6 +21,7 @@ export default function ProjectsKanbanPage() {
   const [acc, setAcc] = useState([])
   const [cons, setCons] = useState([])
   const [inf, setInf] = useState([])
+  const [dl, setDl] = useState(null)
   useEffect(() => { fetchProjects().then(setRows).catch(console.error) }, [])
 
   const ownerOpts    = useMemo(() => toOpts(rows.map((r) => r.owner)), [rows])
@@ -40,7 +41,8 @@ export default function ProjectsKanbanPage() {
     && anyOf(resp, r.responsible)
     && anyOf(acc, r.accountable)
     && anyOf(cons, r.consulted)
-    && anyOf(inf, r.informed))
+    && anyOf(inf, r.informed)
+    && dateMatches(dl, r.deadline))
 
   return (
     <>
@@ -53,6 +55,7 @@ export default function ProjectsKanbanPage() {
           <MultiFilter label="A-ccountable" tooltip={RACI_TOOLTIPS.accountable} options={accOpts} value={acc} onChange={setAcc} />
           <MultiFilter label="C-onsulted" tooltip={RACI_TOOLTIPS.consulted} options={consOpts} value={cons} onChange={setCons} />
           <MultiFilter label="I-nformed" tooltip={RACI_TOOLTIPS.informed} options={infOpts} value={inf} onChange={setInf} />
+          <DateFilter label="Deadline" value={dl} onChange={setDl} />
         </div>
         <div className="spacer" />
       </div>

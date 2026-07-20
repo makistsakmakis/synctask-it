@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchProjects } from '../lib/projects'
-import { MultiFilter } from '../components/ui'
+import { MultiFilter, DateFilter, dateMatches } from '../components/ui'
+import { exportXLSX } from '../lib/meta'
 
 const RACI_TOOLTIPS = {
   responsible: 'Responsible (R): The person or team who actually does the work to complete the task. They are responsible for driving the work to completion.',
@@ -37,6 +38,7 @@ export default function ProjectsRaciPage() {
   const [acc, setAcc] = useState([])
   const [cons, setCons] = useState([])
   const [inf, setInf] = useState([])
+  const [dl, setDl] = useState(null)
   useEffect(() => { fetchProjects().then(setRows).catch(console.error) }, [])
 
   const ownerOpts    = useMemo(() => toOpts(rows.map((r) => r.owner)), [rows])
@@ -56,7 +58,8 @@ export default function ProjectsRaciPage() {
     && anyOf(resp, r.responsible)
     && anyOf(acc, r.accountable)
     && anyOf(cons, r.consulted)
-    && anyOf(inf, r.informed))
+    && anyOf(inf, r.informed)
+    && dateMatches(dl, r.deadline))
 
   // Στήλες: όλα τα resources που εμφανίζονται σε R/A/C/I των ορατών projects
   const resources = useMemo(() => [...new Set(visible.flatMap((p) => [
@@ -74,6 +77,7 @@ export default function ProjectsRaciPage() {
           <MultiFilter label="A-ccountable" tooltip={RACI_TOOLTIPS.accountable} options={accOpts} value={acc} onChange={setAcc} />
           <MultiFilter label="C-onsulted" tooltip={RACI_TOOLTIPS.consulted} options={consOpts} value={cons} onChange={setCons} />
           <MultiFilter label="I-nformed" tooltip={RACI_TOOLTIPS.informed} options={infOpts} value={inf} onChange={setInf} />
+          <DateFilter label="Deadline" value={dl} onChange={setDl} />
         </div>
         <div className="spacer" />
         <div className="raci-legend">
@@ -81,6 +85,10 @@ export default function ProjectsRaciPage() {
             <span key={l} title={RACI_TOOLTIPS[key]}><i className={'c' + l} />{l} = {name}</span>
           ))}
         </div>
+        <button className="btn sm" onClick={() => exportXLSX(
+          ['Project', ...resources],
+          visible.map((p) => [p.title, ...resources.map((n) => cellRole(p, n))]),
+          'raci.xlsx')}>⬇ Export Excel</button>
       </div>
 
       {visible.length === 0 || resources.length === 0 ? (
