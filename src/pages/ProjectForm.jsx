@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime, sanitizeHtml } from '../lib/meta'
@@ -54,6 +54,42 @@ function resizeToDataURL(file, maxPx = 96) {
   })
 }
 
+// ── Icon library (100px/) ─
+const ICON_MODULES = import.meta.glob('/100px/*.png', { eager: true, query: '?url', import: 'default' })
+const ICONS = Object.entries(ICON_MODULES)
+  .map(([path, url]) => ({ name: decodeURIComponent(path.split('/').pop()).replace(/\.png$/i, ''), url }))
+  .sort((a, b) => a.name.localeCompare(b.name))
+
+function IconPicker({ onPick, onClose }) {
+  const [q, setQ] = useState('')
+  const shown = useMemo(() => {
+    const t = q.trim().toLowerCase()
+    return t ? ICONS.filter((i) => i.name.toLowerCase().includes(t)) : ICONS
+  }, [q])
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="iconpicker" onClick={(e) => e.stopPropagation()}>
+        <div className="iconpicker-head">
+          <input className="search" style={{ flex: 1 }} placeholder="Αναζήτηση εικονιδίου…"
+            value={q} autoFocus onChange={(e) => setQ(e.target.value)} />
+          <span className="grid-count">{shown.length} / {ICONS.length}</span>
+          <button type="button" className="rte-close" onClick={onClose} title="Κλείσιμο">✕</button>
+        </div>
+        <div className="iconpicker-grid">
+          {shown.length === 0
+            ? <div className="empty" style={{ gridColumn: '1 / -1' }}>Δεν βρέθηκαν εικονίδια.</div>
+            : shown.map((i) => (
+              <button key={i.name} type="button" className="iconpicker-item" title={i.name} onClick={() => onPick(i)}>
+                <img src={i.url} alt="" loading="lazy" />
+                <span>{i.name}</span>
+              </button>
+            ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const EMPTY = {
   title: '', owner_id: '', supervisor_id: '', status: '',
   start_date: '', end_date: '', proposed_start: '', deadline: '',
@@ -81,14 +117,15 @@ export default function ProjectForm() {
   const [busy, setBusy] = useState(false)
   const [showRte, setShowRte] = useState(false)
   const [resourceOpts, setResourceOpts] = useState([])
-  const iconRef = useRef(null)
+  const [showIconPicker, setShowIconPicker] = useState(false)
 
-  const handleIcon = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const dataUrl = await resizeToDataURL(file, 96)
-    setForm((f) => ({ ...f, icon: dataUrl }))
-    e.target.value = '' // reset so same file can be re-selected
+  const pickIcon = async (icon) => {
+    try {
+      const blob = await (await fetch(icon.url)).blob()
+      const dataUrl = await resizeToDataURL(blob, 96)
+      setForm((f) => ({ ...f, icon: dataUrl }))
+    } catch { /* ignore */ }
+    setShowIconPicker(false)
   }
 
   const allowed = (f) => {
@@ -193,17 +230,16 @@ export default function ProjectForm() {
           <div className="f">
             <span className="k" style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, display: 'block' }}>Project icon</span>
             <div className="proj-icon-upload">
-              <input ref={iconRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleIcon} />
               {form.icon
                 ? <img src={form.icon} alt="icon" className="proj-icon-preview"
-                    onClick={() => allowed('icon') && iconRef.current?.click()}
+                    onClick={() => allowed('icon') && setShowIconPicker(true)}
                     title={allowed('icon') ? 'Click to change' : undefined} />
                 : allowed('icon') && (
-                  <div className="proj-icon-placeholder" onClick={() => iconRef.current?.click()} title="Upload icon">＋</div>
+                  <div className="proj-icon-placeholder" onClick={() => setShowIconPicker(true)} title="Επιλογή εικονιδίου">＋</div>
                 )}
               {form.icon && allowed('icon') && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <button type="button" className="btn sm" onClick={() => iconRef.current?.click()}>Change</button>
+                  <button type="button" className="btn sm" onClick={() => setShowIconPicker(true)}>Change</button>
                   <button type="button" className="btn sm danger" onClick={() => setForm((f) => ({ ...f, icon: '' }))}>Remove</button>
                 </div>
               )}
@@ -330,6 +366,10 @@ export default function ProjectForm() {
           </div>
         )}
       </div>
+
+      {showIconPicker && (
+        <IconPicker onPick={pickIcon} onClose={() => setShowIconPicker(false)} />
+      )}
 
       {showRte && (
         <RichTextEditor
