@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchProjects } from '../lib/projects'
-import { MultiFilter, DateFilter, dateMatches } from '../components/ui'
 import { exportXLSX } from '../lib/meta'
 
 const RACI_TOOLTIPS = {
@@ -10,9 +8,6 @@ const RACI_TOOLTIPS = {
   consulted:   'Consulted (C): Subject-matter experts or stakeholders whose opinions are sought before a decision is made or the work is finalized.',
   informed:    'Informed (I): People who are kept up-to-date on project progress or decisions, but are not directly involved in the execution or decision-making.',
 }
-
-const toOpts = (vals) => [...new Set(vals.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'el'))
-  .map((v) => ({ value: v, label: v }))
 
 // Προτεραιότητα γράμματος όταν ένα resource έχει πολλαπλούς ρόλους στο ίδιο project
 const ROLES = [['accountable', 'A'], ['responsible', 'R'], ['consulted', 'C'], ['informed', 'I']]
@@ -28,70 +23,31 @@ const LEGEND = [
   ['I', 'Informed', 'informed'],
 ]
 
-export default function ProjectsRaciPage() {
+// Rows (ήδη φιλτραρισμένα) έρχονται από το ProjectsOverview — τα φίλτρα είναι κοινά για τα 3 views.
+export default function ProjectsRaciPage({ rows = [] }) {
   const nav = useNavigate()
-  const [rows, setRows] = useState([])
-  const [owners, setOwners] = useState([])
-  const [approvers, setApprovers] = useState([])
-  const [statuses, setStatuses] = useState([])
-  const [resp, setResp] = useState([])
-  const [acc, setAcc] = useState([])
-  const [cons, setCons] = useState([])
-  const [inf, setInf] = useState([])
-  const [dl, setDl] = useState(null)
-  useEffect(() => { fetchProjects().then(setRows).catch(console.error) }, [])
-
-  const ownerOpts    = useMemo(() => toOpts(rows.map((r) => r.owner)), [rows])
-  const approverOpts = useMemo(() => toOpts(rows.map((r) => r.supervisor)), [rows])
-  const statusOpts   = useMemo(() => toOpts(rows.map((r) => r.status)), [rows])
-  const respOpts     = useMemo(() => toOpts(rows.flatMap((r) => r.responsible ?? [])), [rows])
-  const accOpts      = useMemo(() => toOpts(rows.flatMap((r) => r.accountable ?? [])), [rows])
-  const consOpts     = useMemo(() => toOpts(rows.flatMap((r) => r.consulted ?? [])), [rows])
-  const infOpts      = useMemo(() => toOpts(rows.flatMap((r) => r.informed ?? [])), [rows])
-
-  const anyOf = (sel, arr) => sel.length === 0 || (arr ?? []).some((n) => sel.includes(n))
-
-  const visible = rows.filter((r) =>
-    (owners.length === 0 || owners.includes(r.owner))
-    && (approvers.length === 0 || approvers.includes(r.supervisor))
-    && (statuses.length === 0 || statuses.includes(r.status))
-    && anyOf(resp, r.responsible)
-    && anyOf(acc, r.accountable)
-    && anyOf(cons, r.consulted)
-    && anyOf(inf, r.informed)
-    && dateMatches(dl, r.deadline))
 
   // Στήλες: όλα τα resources που εμφανίζονται σε R/A/C/I των ορατών projects
-  const resources = useMemo(() => [...new Set(visible.flatMap((p) => [
+  const resources = useMemo(() => [...new Set(rows.flatMap((p) => [
     ...(p.responsible ?? []), ...(p.accountable ?? []), ...(p.consulted ?? []), ...(p.informed ?? []),
-  ]))].sort((a, b) => a.localeCompare(b, 'el')), [visible])
+  ]))].sort((a, b) => a.localeCompare(b, 'el')), [rows])
 
   return (
     <>
       <div className="toolbar">
-        <div className="chips" style={{ gap: 8 }}>
-          <MultiFilter label="Owner" options={ownerOpts} value={owners} onChange={setOwners} />
-          <MultiFilter label="Approver" tooltip="Ο Supervisor που εγκρίνει το project" options={approverOpts} value={approvers} onChange={setApprovers} />
-          <MultiFilter label="Status" options={statusOpts} value={statuses} onChange={setStatuses} />
-          <MultiFilter label="R-esponsible" tooltip={RACI_TOOLTIPS.responsible} options={respOpts} value={resp} onChange={setResp} />
-          <MultiFilter label="A-ccountable" tooltip={RACI_TOOLTIPS.accountable} options={accOpts} value={acc} onChange={setAcc} />
-          <MultiFilter label="C-onsulted" tooltip={RACI_TOOLTIPS.consulted} options={consOpts} value={cons} onChange={setCons} />
-          <MultiFilter label="I-nformed" tooltip={RACI_TOOLTIPS.informed} options={infOpts} value={inf} onChange={setInf} />
-          <DateFilter label="Deadline" value={dl} onChange={setDl} />
-        </div>
-        <div className="spacer" />
         <div className="raci-legend">
           {LEGEND.map(([l, name, key]) => (
             <span key={l} title={RACI_TOOLTIPS[key]}><i className={'c' + l} />{l} = {name}</span>
           ))}
         </div>
+        <div className="spacer" />
         <button className="btn sm" onClick={() => exportXLSX(
           ['Project', ...resources],
-          visible.map((p) => [p.title, ...resources.map((n) => cellRole(p, n))]),
+          rows.map((p) => [p.title, ...resources.map((n) => cellRole(p, n))]),
           'raci.xlsx')}>⬇ Export Excel</button>
       </div>
 
-      {visible.length === 0 || resources.length === 0 ? (
+      {rows.length === 0 || resources.length === 0 ? (
         <div className="card"><div className="empty">Δεν υπάρχουν projects με RACI για εμφάνιση.</div></div>
       ) : (
         <div className="card raci-wrap">
@@ -103,7 +59,7 @@ export default function ProjectsRaciPage() {
               </tr>
             </thead>
             <tbody>
-              {visible.map((p) => (
+              {rows.map((p) => (
                 <tr key={p.id} onClick={() => nav(`/projects/${p.id}`)}>
                   <td className="rowtitle" title={p.title}>{p.title}</td>
                   {resources.map((name) => {
