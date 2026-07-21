@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { fetchProjects } from '../lib/projects'
+import { fetchProjects, updateProject, fetchProjectStatuses } from '../lib/projects'
 import { fetchResources } from '../lib/api'
 import { MultiFilter, DateFilter, dateMatches } from '../components/ui'
 import ProjectsKanbanPage from './ProjectsKanban'
@@ -26,6 +26,8 @@ export default function ProjectsOverview() {
   const [view, setView] = useState('Kanban')
   const [rows, setRows] = useState([])
   const [resources, setResources] = useState([])
+  const [statusList, setStatusList] = useState([])
+  const [err, setErr] = useState('')
 
   // Shared filters — persist across view toggles (state lives here, views are children)
   const [owners, setOwners] = useState([])
@@ -41,7 +43,17 @@ export default function ProjectsOverview() {
   useEffect(() => {
     fetchProjects().then(setRows).catch(console.error)
     fetchResources().then(setResources).catch(() => setResources([]))
+    fetchProjectStatuses().then(setStatusList).catch(() => setStatusList([]))
   }, [])
+
+  // Drag-n-drop στο Kanban: optimistic update του status, revert σε αποτυχία
+  const moveProject = async (id, status) => {
+    const prev = rows
+    setErr('')
+    setRows((rs) => rs.map((r) => (String(r.id) === String(id) ? { ...r, status } : r)))
+    try { await updateProject(id, { status }) }
+    catch (e) { setRows(prev); setErr(e.message ?? 'Η αλλαγή status απέτυχε.') }
+  }
 
   const ownerOpts    = useMemo(() => toOpts(rows.map((r) => r.owner)), [rows])
   const approverOpts = useMemo(() => toOpts(rows.map((r) => r.supervisor)), [rows])
@@ -121,7 +133,9 @@ export default function ProjectsOverview() {
         <div className="spacer" />
       </div>
 
-      {view === 'Kanban' ? <ProjectsKanbanPage rows={visible} />
+      {err && <div className="err">{err}</div>}
+
+      {view === 'Kanban' ? <ProjectsKanbanPage rows={visible} onDrop={moveProject} allStatuses={statusList} />
         : view === 'RACI' ? <ProjectsRaciPage rows={visible} />
         : <ProjectsDashboard rows={visible} />}
     </>

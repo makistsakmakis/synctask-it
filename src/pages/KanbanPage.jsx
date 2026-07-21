@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { fetchRequests } from '../lib/api'
+import { fetchRequests, updateRequest } from '../lib/api'
 import { Kanban, MultiFilter, DateFilter, dateMatches } from '../components/ui'
 
 export default function KanbanPage() {
@@ -8,7 +8,17 @@ export default function KanbanPage() {
   const [tags, setTags] = useState([])
   const [projects, setProjects] = useState([])
   const [dl, setDl] = useState(null)
+  const [err, setErr] = useState('')
   useEffect(() => { fetchRequests().then(setRows).catch(console.error) }, [])
+
+  // Drag-n-drop: optimistic update του status, revert σε αποτυχία
+  const moveTask = async (id, status) => {
+    const prev = rows
+    setErr('')
+    setRows((rs) => rs.map((r) => (String(r.id) === String(id) ? { ...r, status } : r)))
+    try { await updateRequest(id, { status }) }
+    catch (e) { setRows(prev); setErr(e.message ?? 'Η αλλαγή status απέτυχε.') }
+  }
 
   const assigneeOpts = useMemo(() =>
     [...new Set(rows.map((r) => r.assigned_to).filter(Boolean))].sort()
@@ -37,7 +47,8 @@ export default function KanbanPage() {
         </div>
         <div className="spacer" />
       </div>
-      <Kanban rows={visible} />
+      {err && <div className="err">{err}</div>}
+      <Kanban rows={visible} onDrop={moveTask} />
     </>
   )
 }

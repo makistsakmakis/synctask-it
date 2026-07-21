@@ -697,15 +697,41 @@ export function MultiFilter({ label, options, value, onChange, tooltip }) {
   )
 }
 
-export function Kanban({ rows }) {
+// ── Kanban drag-n-drop (HTML5 DnD, χωρίς βιβλιοθήκη) ─
+// Όταν δίνεται onDrop(id, newStatus), οι κάρτες γίνονται draggable και οι
+// στήλες δέχονται drop· ο γονιός αναλαμβάνει το (optimistic) status update.
+const dragStart = (id, status) => (e) => {
+  e.dataTransfer.setData('text/kanban-id', String(id))
+  e.dataTransfer.setData('text/kanban-status', status ?? '')
+  e.dataTransfer.effectAllowed = 'move'
+  e.currentTarget.classList.add('dragging')
+}
+const dragEnd = (e) => e.currentTarget.classList.remove('dragging')
+const colDropProps = (status, onDrop, setOver) => onDrop ? {
+  onDragOver: (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setOver(status) },
+  onDragLeave: (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOver('') },
+  onDrop: (e) => {
+    e.preventDefault(); setOver('')
+    const id = e.dataTransfer.getData('text/kanban-id')
+    const from = e.dataTransfer.getData('text/kanban-status')
+    if (id && from !== status) onDrop(id, status)
+  },
+} : {}
+
+export function Kanban({ rows, onDrop }) {
   const nav = useNavigate()
+  const [over, setOver] = useState('')
   return (
     <div className="kanban">
       {STATUSES.map((s) => (
-        <div className="kcol" key={s}>
+        <div className={'kcol' + (over === s ? ' drag-over' : '')} key={s}
+          {...colDropProps(s, onDrop, setOver)}>
           <h3 style={{ color: STATUS_COLOR[s] }}>{s} · {rows.filter((r) => r.status === s).length}</h3>
           {rows.filter((r) => r.status === s).map((r) => (
-            <div className="kcard" key={r.id} onClick={() => nav(`/requests/${r.id}`)}>
+            <div className="kcard" key={r.id} onClick={() => nav(`/requests/${r.id}`)}
+              draggable={!!onDrop}
+              onDragStart={onDrop ? dragStart(r.id, r.status) : undefined}
+              onDragEnd={onDrop ? dragEnd : undefined}>
               <div className="t">{r.title}</div>
               <span className="mono" style={{ color: 'var(--ink-soft)' }}>{r.assigned_to ?? 'Unassigned'}</span>
               <Flags r={r} />
@@ -717,24 +743,30 @@ export function Kanban({ rows }) {
   )
 }
 
-export function ProjectsKanban({ rows }) {
+export function ProjectsKanban({ rows, onDrop, allStatuses = [] }) {
   const nav = useNavigate()
+  const [over, setOver] = useState('')
   const sof = (p) => p.status || 'No status'
   const statuses = useMemo(() => {
-    const present = [...new Set(rows.map(sof))]
+    // Με DnD θέλουμε και τις κενές στήλες-στόχους, γι' αυτό ενώνουμε με τα allStatuses.
+    const present = [...new Set([...rows.map(sof), ...(onDrop ? allStatuses : [])])]
     const ordered = ['Not Started', 'In Progress', 'Waiting', 'On Hold', 'Deferred', 'Completed', 'No status']
     const known = ordered.filter((s) => present.includes(s))
     const extra = present.filter((s) => !ordered.includes(s))
     const all = [...known, ...extra]
     return all.length ? all : ['No status']
-  }, [rows])
+  }, [rows, onDrop, allStatuses])
   return (
     <div className="kanban">
       {statuses.map((s) => (
-        <div className="kcol" key={s}>
+        <div className={'kcol' + (over === s ? ' drag-over' : '')} key={s}
+          {...(s === 'No status' ? {} : colDropProps(s, onDrop, setOver))}>
           <h3>{s} · {rows.filter((r) => sof(r) === s).length}</h3>
           {rows.filter((r) => sof(r) === s).map((p) => (
-            <div className="kcard" key={p.id} onClick={() => nav(`/projects/${p.id}`)}>
+            <div className="kcard" key={p.id} onClick={() => nav(`/projects/${p.id}`)}
+              draggable={!!onDrop}
+              onDragStart={onDrop ? dragStart(p.id, p.status) : undefined}
+              onDragEnd={onDrop ? dragEnd : undefined}>
               <div className="t">{p.title}</div>
               <span className="mono" style={{ color: 'var(--ink-soft)' }}>{p.owner || '—'}</span>
             </div>
