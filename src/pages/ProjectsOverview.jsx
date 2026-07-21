@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { fetchProjects, updateProject, fetchProjectStatuses } from '../lib/projects'
 import { fetchResources, fetchPendingTaskCount } from '../lib/api'
 import { applyProjectStatusRules } from '../lib/projectRules'
-import { MultiFilter, DateFilter, dateMatches } from '../components/ui'
+import { MultiFilter, DateFilter, dateMatches, NoticeDialog } from '../components/ui'
 import ProjectsKanbanPage from './ProjectsKanban'
 import ProjectsDashboard from './ProjectsDashboard'
 import ProjectsRaciPage from './ProjectsRaci'
@@ -28,7 +28,7 @@ export default function ProjectsOverview() {
   const [rows, setRows] = useState([])
   const [resources, setResources] = useState([])
   const [statusList, setStatusList] = useState([])
-  const [err, setErr] = useState('')
+  const [notice, setNotice] = useState(null) // { type: 'error'|'warn', text, onOk? }
 
   // Shared filters — persist across view toggles (state lives here, views are children)
   const [owners, setOwners] = useState([])
@@ -50,12 +50,12 @@ export default function ProjectsOverview() {
   // Drag-n-drop στο Kanban: Project Status Rules (κοινοί με τη φόρμα —
   // lib/projectRules.js), μετά optimistic update + auto dates, revert σε αποτυχία.
   const moveProject = async (id, status) => {
-    setErr('')
     const row = rows.find((r) => String(r.id) === String(id))
     if (!row) return
     const { error, patch, needsPendingTasksConfirm } =
       applyProjectStatusRules({ prev: row.status, next: status, project: row })
-    if (error) { setErr(error); return } // μπλοκάρει — η κάρτα δεν μετακινείται
+    // ERROR: μπλοκάρει — η κάρτα δεν μετακινείται· το ΟΚ επιστρέφει στο board για διόρθωση
+    if (error) { setNotice({ type: 'error', text: error }); return }
     if (needsPendingTasksConfirm) {
       try {
         const n = await fetchPendingTaskCount(id)
@@ -66,7 +66,7 @@ export default function ProjectsOverview() {
     const prev = rows
     setRows((rs) => rs.map((r) => (String(r.id) === String(id) ? { ...r, status, ...patch } : r)))
     try { await updateProject(id, { status, ...patch }) }
-    catch (e) { setRows(prev); setErr(e.message ?? 'Η αλλαγή status απέτυχε.') }
+    catch (e) { setRows(prev); setNotice({ type: 'error', text: e.message ?? 'Η αλλαγή status απέτυχε.' }) }
   }
 
   const ownerOpts    = useMemo(() => toOpts(rows.map((r) => r.owner)), [rows])
@@ -147,7 +147,7 @@ export default function ProjectsOverview() {
         <div className="spacer" />
       </div>
 
-      {err && <div className="err">{err}</div>}
+      <NoticeDialog notice={notice} onClose={() => setNotice(null)} />
 
       {view === 'Kanban' ? <ProjectsKanbanPage rows={visible} onDrop={moveProject} allStatuses={statusList} />
         : view === 'RACI' ? <ProjectsRaciPage rows={visible} />

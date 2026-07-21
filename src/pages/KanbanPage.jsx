@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchRequests, updateRequest } from '../lib/api'
 import { applyTaskStatusRules } from '../lib/taskRules'
-import { Kanban, MultiFilter, DateFilter, dateMatches } from '../components/ui'
+import { Kanban, MultiFilter, DateFilter, dateMatches, NoticeDialog } from '../components/ui'
 
 export default function KanbanPage() {
   const [rows, setRows] = useState([])
@@ -9,23 +9,27 @@ export default function KanbanPage() {
   const [tags, setTags] = useState([])
   const [projects, setProjects] = useState([])
   const [dl, setDl] = useState(null)
-  const [err, setErr] = useState('')
-  const [warn, setWarn] = useState('')
+  const [notice, setNotice] = useState(null) // { type: 'error'|'warn', text, onOk? }
   useEffect(() => { fetchRequests().then(setRows).catch(console.error) }, [])
 
   // Drag-n-drop: Task Status Rules (κοινοί με τη φόρμα — lib/taskRules.js),
   // μετά optimistic update του status + auto-συμπληρώσεις, revert σε αποτυχία.
   const moveTask = async (id, status) => {
-    setErr(''); setWarn('')
     const task = rows.find((r) => String(r.id) === String(id))
     if (!task) return
     const { error, patch, warnings } = applyTaskStatusRules({ ...task, status })
-    if (error) { setErr(error); return } // μπλοκάρει την αλλαγή — η κάρτα δεν μετακινείται
-    if (warnings.length) setWarn('Προειδοποίηση: ' + warnings.join(' '))
-    const prev = rows
-    setRows((rs) => rs.map((r) => (String(r.id) === String(id) ? { ...r, status, ...patch } : r)))
-    try { await updateRequest(id, { status, ...patch }) }
-    catch (e) { setRows(prev); setErr(e.message ?? 'Η αλλαγή status απέτυχε.') }
+    // ERROR: μπλοκάρει — η κάρτα δεν μετακινείται· το ΟΚ επιστρέφει στο board για διόρθωση
+    if (error) { setNotice({ type: 'error', text: error }); return }
+
+    const proceed = async () => {
+      const prev = rows
+      setRows((rs) => rs.map((r) => (String(r.id) === String(id) ? { ...r, status, ...patch } : r)))
+      try { await updateRequest(id, { status, ...patch }) }
+      catch (e) { setRows(prev); setNotice({ type: 'error', text: e.message ?? 'Η αλλαγή status απέτυχε.' }) }
+    }
+    // WARNING: το ΟΚ (λήψη γνώσης) επιτρέπει τη ροή να συνεχίσει
+    if (warnings.length) setNotice({ type: 'warn', text: warnings.join('\n'), onOk: proceed })
+    else await proceed()
   }
 
   const assigneeOpts = useMemo(() =>
@@ -55,8 +59,7 @@ export default function KanbanPage() {
         </div>
         <div className="spacer" />
       </div>
-      {err && <div className="err">{err}</div>}
-      {warn && <div className="warn">{warn}</div>}
+      <NoticeDialog notice={notice} onClose={() => setNotice(null)} />
       <Kanban rows={visible} onDrop={moveTask} />
     </>
   )

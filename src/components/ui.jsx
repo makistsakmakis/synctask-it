@@ -697,6 +697,30 @@ export function MultiFilter({ label, options, value, onChange, tooltip }) {
   )
 }
 
+// ── NoticeDialog: modal μήνυμα σφάλματος/προειδοποίησης με κουμπί OK ─
+// Το OK δηλώνει ότι ο χρήστης έλαβε γνώση: κλείνει το μήνυμα και
+// (α) σε WARNING επιτρέπει τη ροή να συνεχίσει (μέσω onOk),
+// (β) σε ERROR επιστρέφει τον χρήστη στο σημείο της διορθωτικής ενέργειας.
+// notice = { type: 'error' | 'warn', text: string, onOk?: () => void }
+export function NoticeDialog({ notice, onClose }) {
+  if (!notice?.text) return null
+  const isErr = notice.type !== 'warn'
+  const ok = () => { onClose(); notice.onOk?.() }
+  return (
+    <div className="overlay" onClick={ok}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ color: isErr ? 'var(--danger)' : '#8a6d1a', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {isErr ? '⛔ Σφάλμα' : '⚠️ Προειδοποίηση'}
+        </h2>
+        <div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{notice.text}</div>
+        <div className="row">
+          <button className="btn primary" onClick={ok} autoFocus>OK</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Kanban drag-n-drop (HTML5 DnD, χωρίς βιβλιοθήκη) ─
 // Όταν δίνεται onDrop(id, newStatus), οι κάρτες γίνονται draggable και οι
 // στήλες δέχονται drop· ο γονιός αναλαμβάνει το (optimistic) status update.

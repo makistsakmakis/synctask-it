@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime, sanitizeHtml } from '../lib/meta'
-import { DateInput, RichTextEditor, AttachmentsPanel } from '../components/ui'
+import { DateInput, RichTextEditor, AttachmentsPanel, NoticeDialog } from '../components/ui'
 import { LISTS } from '../lib/sp'
 import {
   fetchRequest, createRequest, updateRequest,
@@ -46,6 +46,7 @@ export default function RequestForm() {
   const [audit, setAudit] = useState(null)
   const [requestDate, setRequestDate] = useState(new Date().toISOString().slice(0, 10))
   const [error, setError]   = useState('')
+  const [notice, setNotice] = useState(null) // { type: 'error'|'warn', text, onOk? }
   const [busy, setBusy]     = useState(false)
   const [rteField, setRteField] = useState(null) // 'requestor_notes' | 'implementor_notes'
 
@@ -102,18 +103,8 @@ export default function RequestForm() {
   }
 
   const NUM = new Set(['estimated_manhours', 'actual_manhours', 'percent_complete'])
-  const save = async () => {
-    if (isReadOnly) return // should never happen — button is hidden
-    const v = validate()
-    if (v) { setError(v); return }
 
-    // Task Status Rules (κοινοί με το Kanban — βλ. lib/taskRules.js)
-    const { error: ruleErr, patch, warnings } = applyTaskStatusRules(form)
-    if (ruleErr) { setError(ruleErr); return }
-    const merged = { ...form, ...patch }
-    if (Object.keys(patch).length) setForm(merged)
-    if (warnings.length) window.alert('Προειδοποίηση:\n• ' + warnings.join('\n• ') + '\n\nΗ αποθήκευση θα προχωρήσει.')
-
+  const doSave = async (merged) => {
     setBusy(true); setError('')
     const payload = {}
     for (const k of Object.keys(EMPTY)) {
@@ -127,6 +118,23 @@ export default function RequestForm() {
     } catch (e) {
       setError(e.message ?? 'Unexpected error occurred. Please try again.')
     } finally { setBusy(false) }
+  }
+
+  const save = async () => {
+    if (isReadOnly) return // should never happen — button is hidden
+    const v = validate()
+    if (v) { setError(v); return }
+
+    // Task Status Rules (κοινοί με το Kanban — βλ. lib/taskRules.js)
+    const { error: ruleErr, patch, warnings } = applyTaskStatusRules(form)
+    // ERROR: το ΟΚ κλείνει το dialog και ο χρήστης μένει στη φόρμα για διόρθωση
+    if (ruleErr) { setNotice({ type: 'error', text: ruleErr }); return }
+    const merged = { ...form, ...patch }
+    if (Object.keys(patch).length) setForm(merged)
+    // WARNING: το ΟΚ (λήψη γνώσης) επιτρέπει στην αποθήκευση να προχωρήσει
+    if (warnings.length) {
+      setNotice({ type: 'warn', text: warnings.join('\n') + '\n\nΜε το ΟΚ η αποθήκευση θα προχωρήσει.', onOk: () => doSave(merged) })
+    } else await doSave(merged)
   }
 
   // If read-only role opens the edit URL, redirect to detail view
@@ -148,6 +156,7 @@ export default function RequestForm() {
         </div>
       </div>
       {error && <div className="err">{error}</div>}
+      <NoticeDialog notice={notice} onClose={() => setNotice(null)} />
       <div className="card" style={{ padding: 18 }}>
         <div className="form">
           <label className="f wide">

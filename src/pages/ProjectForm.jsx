@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime, sanitizeHtml } from '../lib/meta'
-import { DateInput, RichTextEditor, MultiPersonSelect, AttachmentsPanel } from '../components/ui'
+import { DateInput, RichTextEditor, MultiPersonSelect, AttachmentsPanel, NoticeDialog } from '../components/ui'
 import { LISTS, getAttachments } from '../lib/sp'
 import { fetchProject, createProject, updateProject, fetchProjectStatuses, signProject } from '../lib/projects'
 import { fetchUserOptions, fetchResourceOptions, fetchResources, fetchPendingTaskCount } from '../lib/api'
@@ -117,6 +117,7 @@ export default function ProjectForm() {
   const [statuses, setStatuses] = useState([])
   const [audit, setAudit] = useState(null)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState(null) // { type: 'error'|'warn', text, onOk? }
   const [busy, setBusy] = useState(false)
   const [showRte, setShowRte] = useState(false)
   const [resourceOpts, setResourceOpts] = useState([])
@@ -180,7 +181,8 @@ export default function ProjectForm() {
       next: form.status,
       project: { ...orig, ...form },
     })
-    if (ruleErr) return setError(ruleErr)
+    // ERROR: το ΟΚ κλείνει το dialog και ο χρήστης μένει στη φόρμα για διόρθωση
+    if (ruleErr) return setNotice({ type: 'error', text: ruleErr })
     if (needsPendingTasksConfirm && editing) {
       try {
         const n = await fetchPendingTaskCount(id)
@@ -230,17 +232,9 @@ export default function ProjectForm() {
     && (effectiveRole === 'admin'
         || (orig?.supervisor_email && orig.supervisor_email === (profile.email ?? '').toLowerCase()))
 
-  const sign = async () => {
-    if (!canSign || busy) return
+  const doSign = async () => {
     setBusy(true); setError('')
     try {
-      // Warning (μη μπλοκαριστικό) αν δεν υπάρχει κανένα συνημμένο
-      try {
-        const files = await getAttachments(LISTS.projects, id)
-        if (!files?.length) window.alert(
-          'Προειδοποίηση: Δεν υπάρχει κανένα συνημμένο αρχείο — το έργο δεν περιγράφεται επαρκώς. Η υπογραφή θα προχωρήσει.')
-      } catch { /* ignore */ }
-
       // RACI defaults από τη λίστα Resources (αντιστοίχιση προσώπου μέσω email)
       const res = await fetchResources().catch(() => [])
       const resIdByEmail = (em) => (em ? res.find((r) => r.email && r.email === em)?.id : undefined)
@@ -260,6 +254,24 @@ export default function ProjectForm() {
       setForm(pick(p)); setOrig(p)
     } catch (e) { setError(e.message ?? 'Η υπογραφή απέτυχε.') }
     finally { setBusy(false) }
+  }
+
+  const sign = async () => {
+    if (!canSign || busy) return
+    // Warning (μη μπλοκαριστικό) αν δεν υπάρχει κανένα συνημμένο:
+    // το ΟΚ (λήψη γνώσης) επιτρέπει στην υπογραφή να προχωρήσει
+    let hasFiles = true
+    try {
+      const files = await getAttachments(LISTS.projects, id)
+      hasFiles = Boolean(files?.length)
+    } catch { /* ignore */ }
+    if (!hasFiles) {
+      setNotice({
+        type: 'warn',
+        text: 'Δεν υπάρχει κανένα συνημμένο αρχείο — το έργο δεν περιγράφεται επαρκώς.\n\nΜε το ΟΚ η υπογραφή θα προχωρήσει.',
+        onOk: doSign,
+      })
+    } else await doSign()
   }
 
   const isReadOnly = PROJECT_RIGHTS[effectiveRole]?.length === 0
@@ -284,6 +296,7 @@ export default function ProjectForm() {
       </div>
 
       {error && <div className="err">{error}</div>}
+      <NoticeDialog notice={notice} onClose={() => setNotice(null)} />
 
       <div className="card" style={{ padding: 18 }}>
         <div className="form">
