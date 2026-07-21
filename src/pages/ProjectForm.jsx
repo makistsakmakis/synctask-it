@@ -5,7 +5,7 @@ import { fmtDateTime, sanitizeHtml } from '../lib/meta'
 import { DateInput, RichTextEditor, MultiPersonSelect, AttachmentsPanel } from '../components/ui'
 import { LISTS } from '../lib/sp'
 import { fetchProject, createProject, updateProject, fetchProjectStatuses } from '../lib/projects'
-import { fetchUserOptions, fetchManagers, fetchResourceOptions } from '../lib/api'
+import { fetchUserOptions, fetchResourceOptions } from '../lib/api'
 
 
 // Field-level edit rights per role for Projects.
@@ -111,7 +111,6 @@ export default function ProjectForm() {
   const editing = Boolean(id)
   const [form, setForm] = useState({ ...EMPTY, status: 'Waiting Manager Approval' })
   const [users, setUsers] = useState([])
-  const [managers, setManagers] = useState([])
   const [statuses, setStatuses] = useState([])
   const [audit, setAudit] = useState(null)
   const [error, setError] = useState('')
@@ -136,7 +135,6 @@ export default function ProjectForm() {
 
   useEffect(() => {
     fetchUserOptions().then(setUsers).catch(() => setUsers([]))
-    fetchManagers().then(setManagers).catch(() => setManagers([]))
     fetchProjectStatuses().then(setStatuses).catch(() => setStatuses([]))
     fetchResourceOptions().then(setResourceOpts).catch(() => setResourceOpts([]))
   }, [])
@@ -260,7 +258,7 @@ export default function ProjectForm() {
             <select value={form.supervisor_id} onChange={set('supervisor_id')}
               disabled={!allowed('supervisor_id')}>
               <option value="">Select supervisor…</option>
-              {managers.map((m) => <option key={m.id} value={m.person_id}>{m.name}</option>)}
+              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
           </label>
           <label className="f">
