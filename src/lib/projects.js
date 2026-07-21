@@ -82,6 +82,29 @@ function resolveAbbrs(val, map) {
   }).filter(Boolean)
 }
 
+// ── Signed On / Signed By (διαδικασία υπογραφής) ─
+// Τα internal names εντοπίζονται στο runtime (π.χ. 'Signed_x0020_On',
+// 'SignedOn', 'Signed_On'). Αν το Signed By είναι Person column, διαβάζεται/
+// γράφεται μέσω <name>LookupId, αλλιώς ως απλό κείμενο.
+const SIGNED_DEFAULT = { on: 'SignedOn', by: 'SignedBy', byIsPerson: false }
+let _signedColsP = null
+function getSignedCols() {
+  return (_signedColsP ??= getListColumns(LISTS.projects).then((cols) => {
+    const squash = (s) => (s ?? '').toLowerCase().replace(/_x0020_/g, '').replace(/[_\s]/g, '')
+    const find = (term) => cols.find((c) => squash(c.displayName) === term || squash(c.name) === term)
+      || cols.find((c) => squash(c.name).includes(term) || squash(c.displayName).includes(term))
+    const on = find('signedon')
+    const by = find('signedby')
+    const r = {
+      on: on?.name ?? SIGNED_DEFAULT.on,
+      by: by?.name ?? SIGNED_DEFAULT.by,
+      byIsPerson: Boolean(by?.personOrGroup),
+    }
+    console.log('[Signed cols detected]', r)
+    return r
+  }).catch(() => ({ ...SIGNED_DEFAULT })))
+}
+
 let _statusWriteColP = null
 function statusWriteCol() {
   return (_statusWriteColP ??= getListColumns(LISTS.projects)
@@ -94,8 +117,9 @@ function statusWriteCol() {
     .catch(() => '_Status'))
 }
 
-const fromSP = (item, users, resMap = new Map(), raciKeys = RACI_COLS_DEFAULT) => {
+const fromSP = (item, users, resMap = new Map(), raciKeys = RACI_COLS_DEFAULT, signedCols = SIGNED_DEFAULT) => {
   const f = item.fields ?? {}
+  const signedById = signedCols.byIsPerson ? f[signedCols.by + 'LookupId'] : null
   const ownerId      = f[F.owner_id]
   const supervisorId = f[F.supervisor_id]
   const ownerUser      = users.get(String(ownerId))
@@ -143,6 +167,11 @@ const fromSP = (item, users, resMap = new Map(), raciKeys = RACI_COLS_DEFAULT) =
     accountable_abbr: resolveAbbrs(f[raciKeys.accountable_ids], resMap),
     consulted_abbr:   resolveAbbrs(f[raciKeys.consulted_ids],   resMap),
     informed_abbr:    resolveAbbrs(f[raciKeys.informed_ids],     resMap),
+    // Υπογραφή — signed_on κενό σημαίνει ανυπόγραφο
+    signed_on: f[signedCols.on] ?? '',
+    signed_by: signedCols.byIsPerson
+      ? (users.get(String(signedById))?.title ?? '')
+      : (f[signedCols.by] ?? ''),
     created_at:  item.createdDateTime,
     modified_at: item.lastModifiedDateTime,
     created_by:  item.createdBy?.user?.displayName  ?? '',
@@ -175,24 +204,37 @@ async function toSP(fields) {
 }
 
 export async function fetchProjects() {
-  const [items, users, resMap, raciKeys] = await Promise.all([
+  const [items, users, resMap, raciKeys, signedCols] = await Promise.all([
     listItems(LISTS.projects),
     getSiteUsers().catch(() => new Map()),
     getResourceMap().catch(() => new Map()),
     getRaciColKeys(),
+    getSignedCols(),
   ])
-  return items.map((i) => fromSP(i, users, resMap, raciKeys))
+  return items.map((i) => fromSP(i, users, resMap, raciKeys, signedCols))
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
 }
 
 export async function fetchProject(id) {
-  const [item, users, resMap, raciKeys] = await Promise.all([
+  const [item, users, resMap, raciKeys, signedCols] = await Promise.all([
     getItem(LISTS.projects, id),
     getSiteUsers().catch(() => new Map()),
     getResourceMap().catch(() => new Map()),
     getRaciColKeys(),
+    getSignedCols(),
   ])
-  return fromSP(item, users, resMap, raciKeys)
+  return fromSP(item, users, resMap, raciKeys, signedCols)
+}
+
+// Υπογραφή project: Signed On = τώρα, Signed By = τρέχων χρήστης,
+// status = 'Not Started', συν προαιρετικά RACI defaults (extraFields).
+export async function signProject(id, { userLookupId, userName = '', extraFields = {} }) {
+  const sc = await getSignedCols()
+  const out = await toSP({ status: 'Not Started', ...extraFields })
+  out[sc.on] = new Date().toISOString()
+  if (sc.byIsPerson && userLookupId) out[sc.by + 'LookupId'] = Number(userLookupId)
+  else out[sc.by] = userName
+  await updateItemFields(LISTS.projects, id, out)
 }
 
 export async function createProject(fields) {

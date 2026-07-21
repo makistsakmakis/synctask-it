@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchProjects, updateProject, fetchProjectStatuses } from '../lib/projects'
-import { fetchResources } from '../lib/api'
+import { fetchResources, fetchPendingTaskCount } from '../lib/api'
+import { applyProjectStatusRules } from '../lib/projectRules'
 import { MultiFilter, DateFilter, dateMatches } from '../components/ui'
 import ProjectsKanbanPage from './ProjectsKanban'
 import ProjectsDashboard from './ProjectsDashboard'
@@ -46,12 +47,25 @@ export default function ProjectsOverview() {
     fetchProjectStatuses().then(setStatusList).catch(() => setStatusList([]))
   }, [])
 
-  // Drag-n-drop στο Kanban: optimistic update του status, revert σε αποτυχία
+  // Drag-n-drop στο Kanban: Project Status Rules (κοινοί με τη φόρμα —
+  // lib/projectRules.js), μετά optimistic update + auto dates, revert σε αποτυχία.
   const moveProject = async (id, status) => {
-    const prev = rows
     setErr('')
-    setRows((rs) => rs.map((r) => (String(r.id) === String(id) ? { ...r, status } : r)))
-    try { await updateProject(id, { status }) }
+    const row = rows.find((r) => String(r.id) === String(id))
+    if (!row) return
+    const { error, patch, needsPendingTasksConfirm } =
+      applyProjectStatusRules({ prev: row.status, next: status, project: row })
+    if (error) { setErr(error); return } // μπλοκάρει — η κάρτα δεν μετακινείται
+    if (needsPendingTasksConfirm) {
+      try {
+        const n = await fetchPendingTaskCount(id)
+        if (n > 0 && !window.confirm(
+          `Το project "${row.title}" έχει ${n} μη ολοκληρωμένα task(s). Να προχωρήσει το κλείσιμο σε "Completed";`)) return
+      } catch { /* αν αποτύχει η μέτρηση, δεν μπλοκάρουμε */ }
+    }
+    const prev = rows
+    setRows((rs) => rs.map((r) => (String(r.id) === String(id) ? { ...r, status, ...patch } : r)))
+    try { await updateProject(id, { status, ...patch }) }
     catch (e) { setRows(prev); setErr(e.message ?? 'Η αλλαγή status απέτυχε.') }
   }
 

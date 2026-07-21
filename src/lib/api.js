@@ -154,3 +154,11 @@ export async function createRequest(fields, profile) {
 export async function updateRequest(id, fields) {
   await updateItemFields(LISTS.requests, id, toSP(fields))
 }
+
+// Πλήθος μη ολοκληρωμένων tasks ενός project (για το Completed confirm των Project Status Rules)
+export async function fetchPendingTaskCount(projectId) {
+  const items = await listItems(LISTS.requests)
+  return items.filter((i) =>
+    String(i.fields?.[REQUEST_FIELDS.project_id] ?? '') === String(projectId)
+    && (i.fields?.[REQUEST_FIELDS.status] ?? '') !== 'Completed').length
+}

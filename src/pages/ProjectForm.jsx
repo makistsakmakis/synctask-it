@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime, sanitizeHtml } from '../lib/meta'
 import { DateInput, RichTextEditor, MultiPersonSelect, AttachmentsPanel } from '../components/ui'
-import { LISTS } from '../lib/sp'
-import { fetchProject, createProject, updateProject, fetchProjectStatuses } from '../lib/projects'
-import { fetchUserOptions, fetchResourceOptions } from '../lib/api'
+import { LISTS, getAttachments } from '../lib/sp'
+import { fetchProject, createProject, updateProject, fetchProjectStatuses, signProject } from '../lib/projects'
+import { fetchUserOptions, fetchResourceOptions, fetchResources, fetchPendingTaskCount } from '../lib/api'
+import { applyProjectStatusRules } from '../lib/projectRules'
 
 
 // Field-level edit rights per role for Projects.
@@ -13,8 +14,9 @@ import { fetchUserOptions, fetchResourceOptions } from '../lib/api'
 const RACI_FIELDS = ['responsible_ids', 'accountable_ids', 'consulted_ids', 'informed_ids']
 
 const PROJECT_RIGHTS = {
-  // Owner (requestor): can create/edit project details but not change status or assign supervisor
-  requestor: ['title', 'product', 'link', 'notes', 'proposed_start', 'deadline', 'icon'],
+  // Owner (requestor): can create/edit project details but not change status.
+  // supervisor_id: υποχρεωτικό πλέον στη δημιουργία — ο requestor επιλέγει ποιος θα υπογράψει.
+  requestor: ['title', 'product', 'link', 'notes', 'proposed_start', 'deadline', 'icon', 'supervisor_id'],
   // Supervisor (manager): can approve (change status), edit RACI
   manager: ['status', 'supervisor_id', 'start_date', 'end_date', 'notes', 'icon'],
   // Implementors: read-only on projects
@@ -110,6 +112,7 @@ export default function ProjectForm() {
   const { profile, effectiveRole } = useSession()
   const editing = Boolean(id)
   const [form, setForm] = useState({ ...EMPTY, status: 'Waiting Manager Approval' })
+  const [orig, setOrig] = useState(null) // το project όπως είναι αποθηκευμένο (prev status, υπογραφή, emails)
   const [users, setUsers] = useState([])
   const [statuses, setStatuses] = useState([])
   const [audit, setAudit] = useState(null)
@@ -149,6 +152,7 @@ export default function ProjectForm() {
   useEffect(() => {
     if (editing) fetchProject(id).then((p) => {
       setForm(pick(p))
+      setOrig(p)
       setAudit({ created_by: p.created_by, created_at: p.created_at, modified_by: p.modified_by, modified_at: p.modified_at })
     }).catch(() => nav('/projects'))
   }, [id])
@@ -158,6 +162,7 @@ export default function ProjectForm() {
 
   const save = async () => {
     if (!form.title.trim()) return setError('Title is required.')
+    if (!form.supervisor_id) return setError('Supervisor is required.')
     if (effectiveRole === 'admin' || effectiveRole === 'requestor') {
       if (!form.deadline) return setError('Deadline is required.')
     }
@@ -167,32 +172,93 @@ export default function ProjectForm() {
       return setError('Actual Start Date must be on or before the End date.')
     if (form.end_date && form.deadline && form.end_date > form.deadline)
       return setError('End date must be on or before the Deadline.')
+
+    // ── Project Status Rules (κοινοί με το Kanban — lib/projectRules.js) ─
+    const prevStatus = editing ? (orig?.status ?? '') : 'Waiting Manager Approval'
+    const { error: ruleErr, patch, needsPendingTasksConfirm } = applyProjectStatusRules({
+      prev: prevStatus,
+      next: form.status,
+      project: { ...orig, ...form },
+    })
+    if (ruleErr) return setError(ruleErr)
+    if (needsPendingTasksConfirm && editing) {
+      try {
+        const n = await fetchPendingTaskCount(id)
+        if (n > 0 && !window.confirm(
+          `Το project έχει ${n} μη ολοκληρωμένα task(s). Να προχωρήσει το κλείσιμο σε "Completed";`)) return
+      } catch { /* αν αποτύχει η μέτρηση, δεν μπλοκάρουμε */ }
+    }
+    const merged = { ...form, ...patch }
+    if (Object.keys(patch).length) setForm(merged)
+
     setError(''); setBusy(true)
 
     // Only write fields the role is allowed to edit
     const payload = {}
     for (const k of Object.keys(EMPTY)) {
       if (!allowed(k)) continue
-      payload[k] = form[k]
+      payload[k] = merged[k]
     }
+    // Τα auto-συμπληρωμένα dates των κανόνων γράφονται πάντα
+    for (const k of Object.keys(patch)) payload[k] = merged[k]
     // Always include owner on create
     if (!editing && effectiveRole === 'requestor') payload.owner_id = form.owner_id
 
     try {
       if (editing) { await updateProject(id, payload); nav(`/projects/${id}`) }
-      else         { const nid = await createProject({ ...form, ...payload }); nav(`/projects/${nid}`) }
+      else {
+        const nid = await createProject({ ...merged, ...payload })
+        // Rule 1: signoff email προς τον Supervisor από το mailbox του χρήστη
+        if ((merged.status || 'Waiting Manager Approval') === 'Waiting Manager Approval') {
+          const sup = users.find((u) => u.id === String(merged.supervisor_id))
+          if (sup?.email) {
+            const subject = `${merged.title.trim().slice(0, 60)} Needs your signoff`
+            window.location.href = `mailto:${sup.email}?subject=${encodeURIComponent(subject)}`
+          }
+        }
+        nav(`/projects/${nid}`)
+      }
     } catch (e) { setError(e.message ?? 'Save failed.') }
     finally     { setBusy(false) }
   }
 
-  // Supervisor approval shortcut: one-click approve
-  const approve = async () => {
-    if (!id) return
+  // ── Υπογραφή (Rule 2) ─
+  // Διαθέσιμη μόνο σε Admin ή στον Supervisor ΤΟΥ έργου, όσο δεν έχει υπογραφεί.
+  const isSigned = Boolean(orig?.signed_on)
+  const canSign = editing && !isSigned
+    && orig?.status === 'Waiting Manager Approval'
+    && (effectiveRole === 'admin'
+        || (orig?.supervisor_email && orig.supervisor_email === (profile.email ?? '').toLowerCase()))
+
+  const sign = async () => {
+    if (!canSign || busy) return
     setBusy(true); setError('')
     try {
-      await updateProject(id, { status: 'Not Started' })
-      nav(`/projects/${id}`)
-    } catch (e) { setError(e.message ?? 'Approval failed.') }
+      // Warning (μη μπλοκαριστικό) αν δεν υπάρχει κανένα συνημμένο
+      try {
+        const files = await getAttachments(LISTS.projects, id)
+        if (!files?.length) window.alert(
+          'Προειδοποίηση: Δεν υπάρχει κανένα συνημμένο αρχείο — το έργο δεν περιγράφεται επαρκώς. Η υπογραφή θα προχωρήσει.')
+      } catch { /* ignore */ }
+
+      // RACI defaults από τη λίστα Resources (αντιστοίχιση προσώπου μέσω email)
+      const res = await fetchResources().catch(() => [])
+      const resIdByEmail = (em) => (em ? res.find((r) => r.email && r.email === em)?.id : undefined)
+      const extraFields = {}
+      if ((orig?.accountable_ids ?? []).length === 0) {
+        const rid = resIdByEmail(orig?.supervisor_email)
+        if (rid) extraFields.accountable_ids = [rid]
+      }
+      if ((orig?.consulted_ids ?? []).length === 0) {
+        const rid = resIdByEmail(orig?.owner_email)
+        if (rid) extraFields.consulted_ids = [rid]
+      }
+
+      const me = users.find((u) => u.email && u.email === (profile.email ?? '').toLowerCase())
+      await signProject(id, { userLookupId: me?.id, userName: me?.name ?? profile.email ?? '', extraFields })
+      const p = await fetchProject(id)
+      setForm(pick(p)); setOrig(p)
+    } catch (e) { setError(e.message ?? 'Η υπογραφή απέτυχε.') }
     finally { setBusy(false) }
   }
 
@@ -209,10 +275,10 @@ export default function ProjectForm() {
               : 'Create a project to group related tasks.'}
           </div>
         </div>
-        {/* Supervisor: one-click Approve button when project is awaiting approval */}
-        {editing && effectiveRole === 'manager' && form.status === 'Waiting Manager Approval' && (
-          <button className="btn primary" onClick={approve} disabled={busy}>
-            ✓ Approve project
+        {/* Υπογραφή: μόνο Admin ή ο Supervisor του έργου, όσο εκκρεμεί έγκριση */}
+        {canSign && (
+          <button className="btn primary" onClick={sign} disabled={busy}>
+            ✍ Υπογραφή
           </button>
         )}
       </div>
@@ -254,7 +320,7 @@ export default function ProjectForm() {
             </select>
           </label>
           <label className="f">
-            <span className="k">Supervisor</span>
+            <span className="k">Supervisor <em>*</em></span>
             <select value={form.supervisor_id} onChange={set('supervisor_id')}
               disabled={!allowed('supervisor_id')}>
               <option value="">Select supervisor…</option>
@@ -340,6 +406,26 @@ export default function ProjectForm() {
         </div>
 
         {editing && <AttachmentsPanel listName={LISTS.projects} itemId={id} canEdit={!isReadOnly} />}
+
+        {/* ── Υπογραφή (Signed On / Signed By — read-only) ─ */}
+        {editing && (
+          <div className="auditbox">
+            <h3>Υπογραφή</h3>
+            <div className="fields" style={{ alignItems: 'center' }}>
+              <div className="field"><div className="k">Signed On</div><div className="v mono">{orig?.signed_on ? fmtDateTime(orig.signed_on) : '—'}</div></div>
+              <div className="field"><div className="k">Signed By</div><div className="v">{orig?.signed_by || '—'}</div></div>
+              <div className="field">
+                <button type="button" className="btn primary sm" onClick={sign}
+                  disabled={!canSign || busy}
+                  title={isSigned ? 'Το project είναι ήδη υπογεγραμμένο'
+                    : canSign ? 'Υπογραφή: Signed On/By, status → Not Started'
+                    : 'Διαθέσιμο μόνο σε Admin ή στον Supervisor του έργου (σε Waiting Manager Approval)'}>
+                  {isSigned ? '✓ Υπογεγραμμένο' : '✍ Υπογραφή'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {editing && audit && (
           <div className="auditbox">
