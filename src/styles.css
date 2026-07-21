@@ -134,6 +134,7 @@ input, select, textarea { width: 100%; border: 1px solid var(--line); border-rad
 textarea { min-height: 84px; resize: vertical; }
 input:disabled, select:disabled, textarea:disabled { background: #f3f4f1; color: #8b9099; }
 .err { background: #fdecec; color: var(--danger); border-radius: 7px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }
+.warn { background: #fdf6e3; color: #8a6d1a; border-radius: 7px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }
 .ok { background: #e7f3f0; color: var(--accent-ink); border-radius: 7px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }
 
 .overlay { position: fixed; inset: 0; background: rgba(20,24,33,.45); display: flex;

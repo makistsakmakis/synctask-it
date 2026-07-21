@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchRequests, updateRequest } from '../lib/api'
+import { applyTaskStatusRules } from '../lib/taskRules'
 import { Kanban, MultiFilter, DateFilter, dateMatches } from '../components/ui'
 
 export default function KanbanPage() {
@@ -9,14 +10,21 @@ export default function KanbanPage() {
   const [projects, setProjects] = useState([])
   const [dl, setDl] = useState(null)
   const [err, setErr] = useState('')
+  const [warn, setWarn] = useState('')
   useEffect(() => { fetchRequests().then(setRows).catch(console.error) }, [])
 
-  // Drag-n-drop: optimistic update του status, revert σε αποτυχία
+  // Drag-n-drop: Task Status Rules (κοινοί με τη φόρμα — lib/taskRules.js),
+  // μετά optimistic update του status + auto-συμπληρώσεις, revert σε αποτυχία.
   const moveTask = async (id, status) => {
+    setErr(''); setWarn('')
+    const task = rows.find((r) => String(r.id) === String(id))
+    if (!task) return
+    const { error, patch, warnings } = applyTaskStatusRules({ ...task, status })
+    if (error) { setErr(error); return } // μπλοκάρει την αλλαγή — η κάρτα δεν μετακινείται
+    if (warnings.length) setWarn('Προειδοποίηση: ' + warnings.join(' '))
     const prev = rows
-    setErr('')
-    setRows((rs) => rs.map((r) => (String(r.id) === String(id) ? { ...r, status } : r)))
-    try { await updateRequest(id, { status }) }
+    setRows((rs) => rs.map((r) => (String(r.id) === String(id) ? { ...r, status, ...patch } : r)))
+    try { await updateRequest(id, { status, ...patch }) }
     catch (e) { setRows(prev); setErr(e.message ?? 'Η αλλαγή status απέτυχε.') }
   }
 
@@ -48,6 +56,7 @@ export default function KanbanPage() {
         <div className="spacer" />
       </div>
       {err && <div className="err">{err}</div>}
+      {warn && <div className="warn">{warn}</div>}
       <Kanban rows={visible} onDrop={moveTask} />
     </>
   )

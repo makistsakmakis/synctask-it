@@ -8,6 +8,7 @@ import {
   fetchRequest, createRequest, updateRequest,
   fetchProjectOptions, fetchTagOptions, fetchUserOptions,
 } from '../lib/api'
+import { applyTaskStatusRules } from '../lib/taskRules'
 
 // Field-level edit rights for Tasks, mapped onto the shared "Tasks" list.
 // Owner (requestor) and Supervisor (manager): READ-ONLY on tasks.
@@ -105,11 +106,19 @@ export default function RequestForm() {
     if (isReadOnly) return // should never happen — button is hidden
     const v = validate()
     if (v) { setError(v); return }
+
+    // Task Status Rules (κοινοί με το Kanban — βλ. lib/taskRules.js)
+    const { error: ruleErr, patch, warnings } = applyTaskStatusRules(form)
+    if (ruleErr) { setError(ruleErr); return }
+    const merged = { ...form, ...patch }
+    if (Object.keys(patch).length) setForm(merged)
+    if (warnings.length) window.alert('Προειδοποίηση:\n• ' + warnings.join('\n• ') + '\n\nΗ αποθήκευση θα προχωρήσει.')
+
     setBusy(true); setError('')
     const payload = {}
     for (const k of Object.keys(EMPTY)) {
       if (!allowed(k)) continue
-      payload[k] = form[k] === '' ? null : NUM.has(k) ? Number(form[k]) : form[k]
+      payload[k] = merged[k] === '' ? null : NUM.has(k) ? Number(merged[k]) : merged[k]
     }
     try {
       const target = editing ? (await updateRequest(id, payload), id)
