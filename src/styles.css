@@ -26,9 +26,12 @@ a { color: var(--accent-ink); }
 button { font-family: var(--font-body); cursor: pointer; }
 .mono { font-family: var(--font-mono); font-size: 12.5px; }
 
-.shell { display: flex; min-height: 100%; }
+/* Το shell κλειδώνει στο ύψος του viewport: το sidebar (με το Sign out)
+   είναι πάντα ορατό και το scroll γίνεται ΜΕΣΑ στο .main — έτσι και η
+   οριζόντια scrollbar των grids φαίνεται χωρίς κάθετο scroll της σελίδας */
+.shell { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
 .side { width: 218px; background: #000; color: #e8eaee; padding: 16px 14px 20px; flex-shrink: 0;
-  display: flex; flex-direction: column; gap: 4px; }
+  display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
 .side-logo { width: 160px; display: block; margin: 0 auto 10px; object-fit: contain; }
 .side .who { font-size: 12px; color: #7a828f; margin-bottom: 18px; line-height: 1.5; word-break: break-all; }
 .side .who b { color: #d7dae0; display: block; }
@@ -37,7 +40,7 @@ button { font-family: var(--font-body); cursor: pointer; }
 .side nav a.active, .side nav a:hover { background: rgba(37,99,235,.18); color: #fff; }
 .side .out { margin-top: auto; background: none; border: 1px solid #2a2f3a; color: #8a95a2;
   border-radius: 7px; padding: 8px; }
-.main { flex: 1; padding: 26px 30px; min-width: 0; }
+.main { flex: 1; padding: 26px 30px; min-width: 0; overflow-y: auto; }
 
 .pagehead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
 .pagehead h1 { font-size: 22px; }
