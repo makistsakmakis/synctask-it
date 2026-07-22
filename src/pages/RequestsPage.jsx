@@ -25,6 +25,9 @@ const golive   = { key: 'golive_required', label: 'Due', ftype: 'date',
 const expStart = { key: 'expected_start', label: 'Start', ftype: 'date',
   render: (r) => <span className="mono">{fmtDate(r.expected_start)}</span>,
   text: (r) => fmtDate(r.expected_start) }
+const signoff  = { key: 'signoff', label: 'Sign Off', ftype: 'date',
+  render: (r) => <span className="mono">{fmtDate(r.signoff)}</span>,
+  text: (r) => fmtDate(r.signoff) }
 const flags    = { key: 'flags', label: '', noFilter: true, noSort: true, render: (r) => <Flags r={r} /> }
 
 const FILTERS = ['Open', 'Not Started', 'In Progress', 'Waiting', 'Deferred', 'Completed', 'Overdue', 'All']
@@ -33,22 +36,22 @@ const VIEWS = {
   requestor: {
     title: 'My project tasks', sub: 'Tasks under your projects (view only).',
     filters: FILTERS,
-    columns: [taskId, title, project, tag, status, assigned, priority, golive, expStart, flags],
+    columns: [taskId, title, project, tag, status, assigned, priority, golive, expStart, signoff, flags],
   },
   manager: {
     title: 'Supervised project tasks', sub: 'Tasks under projects you supervise (view only).',
     filters: FILTERS,
-    columns: [taskId, title, project, tag, requestor, status, assigned, priority, golive, flags],
+    columns: [taskId, title, project, tag, requestor, status, assigned, priority, golive, signoff, flags],
   },
   resource: {
     title: 'Assigned to me', sub: 'Tasks assigned to you.',
     filters: FILTERS,
-    columns: [taskId, title, project, tag, status, priority, expStart, requestor, flags],
+    columns: [taskId, title, project, tag, status, priority, expStart, requestor, signoff, flags],
   },
   admin: {
     title: 'Tasks', sub: 'Full operational list of tasks.',
     filters: FILTERS,
-    columns: [taskId, title, requestor, assigned, project, tag, status, priority, golive, expStart, flags],
+    columns: [taskId, title, requestor, assigned, project, tag, status, priority, golive, expStart, signoff, flags],
   },
 }
 

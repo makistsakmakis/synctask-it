@@ -22,10 +22,7 @@ export default function RequestDetail() {
 
   if (!r) return <div className="empty">Loading…</div>
 
-  const me = profile.email.toLowerCase()
   const isAdmin = effectiveRole === 'admin'
-  const isApprover = r.approver?.email?.toLowerCase() === me
-  const isMember = (r.implementors ?? []).some((i) => i.resource?.email?.toLowerCase() === me)
   const teamNames = (r.implementors ?? []).map((i) => i.resource?.name).join(', ') || '—'
   const teamEmails = (r.implementors ?? []).map((i) => i.resource?.email).join(',')
 
@@ -71,7 +68,6 @@ export default function RequestDetail() {
         {tab === 'General' && (
           <div className="fields">
             <F k="Requestor" v={`${r.requestor_name ?? ''} (${r.requestor_email ?? ''})`} />
-            <F k="Approver" v={r.approver?.name ?? '—'} />
             <F k="Assigned to" v={r.assigned_to ?? '—'} />
             <F k="Project" v={r.project_name ?? '—'} />
             <F k="Tag" v={r.tag_name
@@ -117,11 +113,8 @@ export default function RequestDetail() {
           <div className="notesblock">
             <p style={{ marginBottom: 12 }}>Manual communication opens a draft in your mail client; workflow events are emailed automatically.</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <a className="btn" href={`mailto:${r.approver?.email}?subject=${encodeURIComponent(`Regarding request No: ${r.reference_number}`)}`}>
-                Message manager
-              </a>
               <a className="btn" href={teamEmails
-                ? `mailto:${teamEmails}?cc=${r.approver?.email}&subject=${encodeURIComponent(`Regarding request No: ${r.reference_number}`)}`
+                ? `mailto:${teamEmails}?subject=${encodeURIComponent(`Regarding request No: ${r.reference_number ?? `#${r.id}`}`)}`
                 : undefined}
                 style={!teamEmails ? { opacity: .5, pointerEvents: 'none' } : undefined}>
                 Message implementors

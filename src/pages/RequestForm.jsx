@@ -75,7 +75,7 @@ export default function RequestForm() {
     if (!editing) return
     fetchRequest(id).then((r) => {
       setRequestDate(r.request_date)
-      setAudit({ created_by: r.created_by, created_at: r.created_at, modified_by: r.modified_by, modified_at: r.modified_at })
+      setAudit({ created_by: r.created_by, created_at: r.created_at, modified_by: r.modified_by, modified_at: r.modified_at, signoff: r.signoff })
       setForm(Object.fromEntries(Object.keys(EMPTY).map((k) =>
         [k, DATE_KEYS.includes(k) ? (r[k] ?? '').slice(0, 10) : (r[k] ?? '')])))
     }).catch(() => nav('/requests'))
@@ -268,6 +268,7 @@ export default function RequestForm() {
               <div className="field"><div className="k">Created on</div><div className="v mono">{fmtDateTime(audit.created_at)}</div></div>
               <div className="field"><div className="k">Modified by</div><div className="v">{audit.modified_by || '—'}</div></div>
               <div className="field"><div className="k">Modified on</div><div className="v mono">{fmtDateTime(audit.modified_at)}</div></div>
+              <div className="field"><div className="k">Sign Off</div><div className="v mono">{audit.signoff ? fmtDateTime(audit.signoff) : '—'}</div></div>
             </div>
           </div>
         )}

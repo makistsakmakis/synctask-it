@@ -25,6 +25,7 @@ export const REQUEST_FIELDS = {
   estimated_manhours: 'Budget_Hours',      // number
   actual_manhours: 'Billed_Hours',         // number
   percent_complete: 'PercentComplete',     // number
+  signoff: 'SignOff',                      // date/time — READ-ONLY στο app (δεν γράφεται ποτέ)
   product: 'Product',                      // text
   requestor_notes: 'Body',                 // text (display: "Description")
   implementor_notes: 'Notes',             // html
