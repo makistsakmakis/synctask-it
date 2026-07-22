@@ -37,8 +37,9 @@ export async function fetchUserOptions() {
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 export async function fetchProjectOptions() {
-  const m = await projectMap()
-  return [...m.entries()].map(([id, title]) => ({ id: String(id), title }))
+  const items = await listItems(PROJECTS_LIST)
+  return items
+    .map((i) => ({ id: String(i.id), title: i.fields?.Title ?? '', on_going: Boolean(i.fields?.ON_GOING) }))
     .filter((o) => o.title).sort((a, b) => a.title.localeCompare(b.title))
 }
 export async function fetchTagOptions() {

@@ -31,6 +31,9 @@ const PROJ_COLUMNS = [
   { key: 'owner',      label: 'Owner',      render: (p) => p.owner      || '—' },
   { key: 'supervisor', label: 'Supervisor',  render: (p) => p.supervisor || '—' },
   { key: 'status',     label: 'Status',      render: (p) => <StatusBadge status={p.status} />, text: (p) => p.status ?? '' },
+  { key: 'on_going',   label: 'ON_GOING', tooltip: 'Project-κουβάς για on-going εργασίες — δεν κλείνει ποτέ',
+    render: (p) => (p.on_going ? <span className="badge" style={{ background: '#3b6e8f', color: '#fff' }}>ON-GOING</span> : '—'),
+    text: (p) => (p.on_going ? 'ON-GOING' : '') },
   { key: 'start_date', label: 'Start', ftype: 'date',       render: (p) => <span className="mono">{fmtDate(p.start_date)}</span>, text: (p) => fmtDate(p.start_date) },
   { key: 'deadline',   label: 'Deadline', ftype: 'date',    render: (p) => <span className="mono">{fmtDate(p.deadline)}</span>,   text: (p) => fmtDate(p.deadline) },
   { key: 'responsible', label: 'R-esponsible', tooltip: RACI_TOOLTIPS.responsible,
@@ -71,6 +74,7 @@ export default function ProjectsPage() {
   }, [effectiveRole, me])
 
   const scopedRows = useMemo(() => rows.filter((p) => {
+    if (p.on_going)                    return true // ON_GOING: ορατά σε ΟΛΟΥΣ
     if (effectiveRole === 'admin')     return true
     if (effectiveRole === 'requestor') return p.owner_email === me
     if (effectiveRole === 'manager')   return p.supervisor_email === me

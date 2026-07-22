@@ -47,6 +47,11 @@ export default function RequestDetail() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn"
+            title="Ανοίγει email προς τον προϊστάμενό σας (συμπληρώνετε τον παραλήπτη) για έγκριση του task"
+            onClick={() => { window.location.href = `mailto:?subject=${encodeURIComponent(`Έγκριση Task #${r.id} ${r.title}`)}` }}>
+            ✉ Έγκριση Προϊσταμένου
+          </button>
           {r.golive_required && (
             <button className="btn" title="Δημιουργεί Outlook calendar event στη DueDate 17:00 — το αποθηκεύετε εσείς"
               onClick={() => window.open(outlookDeadlineUrl({ title: r.title, project: r.project_name, dueISO: r.golive_required }), '_blank')}>

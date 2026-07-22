@@ -3,10 +3,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime, sanitizeHtml, outlookDeadlineUrl } from '../lib/meta'
 import { DateInput, RichTextEditor, AttachmentsPanel, CommentsPanel, NoticeDialog } from '../components/ui'
-import { LISTS } from '../lib/sp'
+import { LISTS, getAttachments } from '../lib/sp'
 import {
   fetchRequest, createRequest, updateRequest,
-  fetchProjectOptions, fetchTagOptions, fetchUserOptions,
+  fetchProjectOptions, fetchTagOptions, fetchUserOptions, fetchResources,
 } from '../lib/api'
 import { applyTaskStatusRules } from '../lib/taskRules'
 
@@ -25,6 +25,13 @@ const RIGHTS = {
 
 const STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed', 'Deferred', 'Waiting']
 const DATE_KEYS = ['golive_required', 'expected_start', 'actual_completion']
+
+// ── ON_GOING flow ─
+// Tasks σε ON_GOING projects: αρχική καταχώρηση από ΟΛΟΥΣ τους ρόλους +
+// μίνι-εγκριτική ροή (SignOff προϊσταμένου). Μέχρι το SignOff, οι μη-admin
+// βλέπουν/επεξεργάζονται ΜΟΝΟ αυτά τα πεδία. Μετά το SignOff το task
+// αντιμετωπίζεται όπως όλα τα άλλα.
+const ONGOING_TASK_FIELDS = ['title', 'golive_required', 'requestor_notes', 'project_id']
 
 const EMPTY = {
   title: '', status: '', golive_required: '', request_type: '', priority: '',
@@ -50,7 +57,13 @@ export default function RequestForm() {
   const [busy, setBusy]     = useState(false)
   const [rteField, setRteField] = useState(null) // 'requestor_notes' | 'implementor_notes'
 
-  const isReadOnly = RIGHTS[effectiveRole]?.length === 0
+  // Το task ανήκει σε ON_GOING project;
+  const isOngoingTask = Boolean(projectOpts.find((p) => p.id === String(form.project_id))?.on_going)
+  // Ειδική ροή ON_GOING: νέα καταχώρηση από μη-admin, ή edit ON_GOING task πριν το SignOff
+  const ongoingFlow = effectiveRole !== 'admin'
+    && (!editing ? true : (isOngoingTask && !audit?.signoff))
+
+  const isReadOnly = !ongoingFlow && RIGHTS[effectiveRole]?.length === 0
 
   useEffect(() => {
     fetchUserOptions().then(setUserOpts).catch(() => setUserOpts([]))
@@ -82,9 +95,15 @@ export default function RequestForm() {
   }, [id])
 
   const allowed = useMemo(() => {
+    if (ongoingFlow) return (f) => ONGOING_TASK_FIELDS.includes(f)
     const list = RIGHTS[effectiveRole]
     return (f) => list === null || list.includes(f)
-  }, [effectiveRole])
+  }, [effectiveRole, ongoingFlow])
+
+  // Μη-admin: το Project dropdown δείχνει ΜΟΝΟ ON_GOING projects
+  const visibleProjectOpts = useMemo(
+    () => (ongoingFlow ? projectOpts.filter((p) => p.on_going) : projectOpts),
+    [projectOpts, ongoingFlow])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
   const setDate = (k) => (iso) => setForm((f) => ({ ...f, [k]: iso }))
@@ -114,6 +133,19 @@ export default function RequestForm() {
     try {
       const target = editing ? (await updateRequest(id, payload), id)
         : await createRequest(payload, profile)
+      // ── ON_GOING εγκριτική ροή: emails από το mailbox του χρήστη ─
+      if (ongoingFlow) {
+        const subjTitle = (merged.title ?? '').trim()
+        if (effectiveRole === 'manager') {
+          // Supervisor → COO (Resources με Is_SuperUser)
+          const coo = (await fetchResources().catch(() => []))
+            .filter((r) => r.is_superuser && r.email).map((r) => r.email).join(',')
+          window.location.href = `mailto:${coo}?subject=${encodeURIComponent(`Εγκεκριμένο Task #${target} ${subjTitle}`)}`
+        } else {
+          // Απλός χρήστης → προϊστάμενος (τον συμπληρώνει χειροκίνητα στο email)
+          window.location.href = `mailto:?subject=${encodeURIComponent(`Έγκριση Task #${target} ${subjTitle}`)}`
+        }
+      }
       nav(`/requests/${target}`)
     } catch (e) {
       setError(e.message ?? 'Unexpected error occurred. Please try again.')
@@ -125,16 +157,43 @@ export default function RequestForm() {
     const v = validate()
     if (v) { setError(v); return }
 
+    // ON_GOING flow: όλα τα ανοιχτά πεδία υποχρεωτικά
+    if (ongoingFlow) {
+      if (!form.project_id) return setError('Project is required.')
+      if (!form.golive_required) return setError('Due date is required.')
+      if (!(form.requestor_notes ?? '').replace(/<[^>]*>/g, '').trim()) return setError('Requestor notes is required.')
+    }
+
     // Task Status Rules (κοινοί με το Kanban — βλ. lib/taskRules.js)
     const { error: ruleErr, patch, warnings } = applyTaskStatusRules(form)
     // ERROR: το ΟΚ κλείνει το dialog και ο χρήστης μένει στη φόρμα για διόρθωση
     if (ruleErr) { setNotice({ type: 'error', text: ruleErr }); return }
     const merged = { ...form, ...patch }
     if (Object.keys(patch).length) setForm(merged)
+    // ON_GOING flow (Supervisor): έλεγχος συνημμένων οδηγιών προς υλοποίηση
+    const allWarnings = [...warnings]
+    if (ongoingFlow && effectiveRole === 'manager' && editing) {
+      const files = await getAttachments(LISTS.requests, id).catch(() => [])
+      if (!files.length) allWarnings.push('Δεν έχουν επισυναφθεί σχετικές οδηγίες προς υλοποίηση.')
+    }
     // WARNING: το ΟΚ (λήψη γνώσης) επιτρέπει στην αποθήκευση να προχωρήσει
-    if (warnings.length) {
-      setNotice({ type: 'warn', text: warnings.join('\n') + '\n\nΜε το ΟΚ η αποθήκευση θα προχωρήσει.', onOk: () => doSave(merged) })
+    if (allWarnings.length) {
+      setNotice({ type: 'warn', text: allWarnings.join('\n') + '\n\nΜε το ΟΚ η αποθήκευση θα προχωρήσει.', onOk: () => doSave(merged) })
     } else await doSave(merged)
+  }
+
+  // ── SignOff προϊσταμένου (Supervisor/Admin, μόνο όσο SignOff=NULL) ─
+  const canTaskSignOff = editing && isOngoingTask
+    && (effectiveRole === 'manager' || effectiveRole === 'admin')
+  const doTaskSignOff = async () => {
+    if (!canTaskSignOff || audit?.signoff || busy) return
+    setBusy(true); setError('')
+    try {
+      await updateRequest(id, { signoff: new Date().toISOString() })
+      const r = await fetchRequest(id)
+      setAudit((a) => ({ ...a, signoff: r.signoff }))
+    } catch (e) { setError(e.message ?? 'Το SignOff απέτυχε.') }
+    finally { setBusy(false) }
   }
 
   // If read-only role opens the edit URL, redirect to detail view
@@ -179,7 +238,17 @@ export default function RequestForm() {
             <input value={form.title} onChange={set('title')} disabled={!allowed('title')} maxLength={140} />
           </label>
           <label className="f">
-            <span className="k">Assigned to</span>
+            <span className="k" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              Assigned to
+              {canTaskSignOff && (
+                <button type="button" className="btn sm primary" style={{ marginLeft: 'auto' }}
+                  disabled={Boolean(audit?.signoff) || busy}
+                  title={audit?.signoff ? `Ήδη υπογεγραμμένο: ${fmtDateTime(audit.signoff)}` : 'SignOff προϊσταμένου: SignOff = τώρα'}
+                  onClick={doTaskSignOff}>
+                  {audit?.signoff ? '✓ Signed' : 'SignOff'}
+                </button>
+              )}
+            </span>
             <select value={form.assigned_to_id} onChange={set('assigned_to_id')} disabled={!allowed('assigned_to_id')}>
               <option value="">Unassigned</option>
               {userOpts.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -195,7 +264,7 @@ export default function RequestForm() {
             <span className="k">Project</span>
             <select value={form.project_id} onChange={set('project_id')} disabled={!allowed('project_id')}>
               <option value="">None</option>
-              {projectOpts.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+              {visibleProjectOpts.map((p) => <option key={p.id} value={p.id}>{p.title}{p.on_going ? ' (ON-GOING)' : ''}</option>)}
             </select>
           </label>
           <label className="f">

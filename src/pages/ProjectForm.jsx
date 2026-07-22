@@ -96,9 +96,11 @@ function IconPicker({ onPick, onClose }) {
 const EMPTY = {
   title: '', owner_id: '', supervisor_id: '', status: '',
   start_date: '', end_date: '', proposed_start: '', deadline: '',
-  product: '', link: '', notes: '', icon: '',
+  product: '', link: '', notes: '', icon: '', on_going: false,
   responsible_ids: [], accountable_ids: [], consulted_ids: [], informed_ids: [],
 }
+// ON_GOING projects: χωρίς πρακτικό deadline — μπαίνει αυτόματα 01/01/2999
+const ONGOING_DEADLINE = '2999-01-01'
 const DATE_KEYS = ['start_date', 'end_date', 'proposed_start', 'deadline']
 const pick = (p) => Object.fromEntries(Object.keys(EMPTY).map((k) => {
   if (DATE_KEYS.includes(k)) return [k, (p[k] ?? '').slice(0, 10)]
@@ -133,6 +135,8 @@ export default function ProjectForm() {
   }
 
   const allowed = (f) => {
+    // ON_GOING projects: ορατά σε όλους, editable ΜΟΝΟ από admin
+    if (orig?.on_going && effectiveRole !== 'admin') return false
     const rights = PROJECT_RIGHTS[effectiveRole]
     return rights === null || rights.includes(f)
   }
@@ -162,24 +166,26 @@ export default function ProjectForm() {
   const setDate = (k) => (iso) => setForm((f) => ({ ...f, [k]: iso }))
 
   const save = async () => {
-    if (!form.title.trim()) return setError('Title is required.')
-    if (!form.supervisor_id) return setError('Supervisor is required.')
+    // ON_GOING: deadline πάντα 01/01/2999 (χωρίς πρακτικό deadline)
+    const f0 = form.on_going ? { ...form, deadline: ONGOING_DEADLINE } : form
+    if (!f0.title.trim()) return setError('Title is required.')
+    if (!f0.supervisor_id) return setError('Supervisor is required.')
     if (effectiveRole === 'admin' || effectiveRole === 'requestor') {
-      if (!form.deadline) return setError('Deadline is required.')
+      if (!f0.deadline) return setError('Deadline is required.')
     }
-    if (form.proposed_start && form.deadline && form.proposed_start > form.deadline)
+    if (f0.proposed_start && f0.deadline && f0.proposed_start > f0.deadline)
       return setError('Proposed start must be on or before the Deadline.')
-    if (form.start_date && form.end_date && form.start_date > form.end_date)
+    if (f0.start_date && f0.end_date && f0.start_date > f0.end_date)
       return setError('Actual Start Date must be on or before the End date.')
-    if (form.end_date && form.deadline && form.end_date > form.deadline)
+    if (f0.end_date && f0.deadline && f0.end_date > f0.deadline)
       return setError('End date must be on or before the Deadline.')
 
     // ── Project Status Rules (κοινοί με το Kanban — lib/projectRules.js) ─
     const prevStatus = editing ? (orig?.status ?? '') : 'Waiting Manager Approval'
     const { error: ruleErr, patch, needsPendingTasksConfirm } = applyProjectStatusRules({
       prev: prevStatus,
-      next: form.status,
-      project: { ...orig, ...form },
+      next: f0.status,
+      project: { ...orig, ...f0 },
     })
     // ERROR: το ΟΚ κλείνει το dialog και ο χρήστης μένει στη φόρμα για διόρθωση
     if (ruleErr) return setNotice({ type: 'error', text: ruleErr })
@@ -190,8 +196,8 @@ export default function ProjectForm() {
           `Το project έχει ${n} μη ολοκληρωμένα task(s). Να προχωρήσει το κλείσιμο σε "Completed";`)) return
       } catch { /* αν αποτύχει η μέτρηση, δεν μπλοκάρουμε */ }
     }
-    const merged = { ...form, ...patch }
-    if (Object.keys(patch).length) setForm(merged)
+    const merged = { ...f0, ...patch }
+    if (Object.keys(patch).length || f0 !== form) setForm(merged)
 
     setError(''); setBusy(true)
 
@@ -275,6 +281,7 @@ export default function ProjectForm() {
   }
 
   const isReadOnly = PROJECT_RIGHTS[effectiveRole]?.length === 0
+    || (Boolean(orig?.on_going) && effectiveRole !== 'admin')
 
   return (
     <>
@@ -339,6 +346,17 @@ export default function ProjectForm() {
               <option value="">Select supervisor…</option>
               {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
+          </label>
+          <label className="f" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+            title="Project-κουβάς για on-going εργασίες (συντήρηση κλπ) — χωρίς πρακτικό deadline, δεν κλείνει ποτέ. Μόνο ο Admin το αλλάζει.">
+            <input type="checkbox" checked={Boolean(form.on_going)}
+              disabled={effectiveRole !== 'admin'}
+              onChange={(e) => setForm((f) => ({
+                ...f,
+                on_going: e.target.checked,
+                deadline: e.target.checked ? ONGOING_DEADLINE : f.deadline,
+              }))} />
+            <span className="k" style={{ marginBottom: 0 }}>ON_GOING</span>
           </label>
           <label className="f">
             <span className="k">Status</span>

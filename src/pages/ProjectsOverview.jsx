@@ -42,7 +42,8 @@ export default function ProjectsOverview() {
   const [dl, setDl] = useState(null)
 
   useEffect(() => {
-    fetchProjects().then(setRows).catch(console.error)
+    // ON_GOING projects: εξαιρούνται από τα 3 views του Overview
+    fetchProjects().then((rs) => setRows(rs.filter((r) => !r.on_going))).catch(console.error)
     fetchResources().then(setResources).catch(() => setResources([]))
     fetchProjectStatuses().then(setStatusList).catch(() => setStatusList([]))
   }, [])

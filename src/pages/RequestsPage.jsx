@@ -107,8 +107,9 @@ export default function RequestsPage() {
     return scoped // Already filtered above via effectiveRole
   }, [scoped, profile, effectiveRole])
 
-  // Only Admin (COO) can create new tasks
-  const canCreate = effectiveRole === 'admin'
+  // Όλοι μπορούν να δημιουργούν tasks — οι μη-admin ΜΟΝΟ σε ON_GOING projects
+  // (επιβάλλεται στη φόρμα, όπου το Project dropdown περιορίζεται αναλόγως)
+  const canCreate = true
 
   return (
     <>

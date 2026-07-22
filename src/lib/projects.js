@@ -15,6 +15,7 @@ const F = {
   link: 'Link',
   notes: 'Notes',
   icon: 'Project_Icon',
+  on_going: 'ON_GOING', // Yes/No — projects-κουβάδες χωρίς πρακτικό deadline (admin-only edit)
 }
 
 // ── RACI columns ───────────────────────────────────────────────────────────────
@@ -140,6 +141,7 @@ const fromSP = (item, users, resMap = new Map(), raciKeys = RACI_COLS_DEFAULT, s
     deadline:       (f[F.deadline]      ?? '').slice(0, 10),
     product: f[F.product] ?? '',
     link:    f[F.link]    ?? '',
+    on_going: Boolean(f[F.on_going]),
     notes:   (() => {
       const raw = typeof f[F.notes] === 'string' ? f[F.notes] : ''
       if (!raw) return ''
@@ -187,7 +189,8 @@ async function toSP(fields) {
     if (!(k in fields)) continue
     let v = fields[k]
     if (v === '' || v == null) { if (k !== 'title') continue; v = '' }
-    out[col] = (k === 'owner_id' || k === 'supervisor_id') ? Number(v) : v
+    out[col] = (k === 'owner_id' || k === 'supervisor_id') ? Number(v)
+      : k === 'on_going' ? Boolean(v) : v
   }
   // RACI multi-value lookup fields — write key = base name + 'LookupId'
   for (const [k, baseCol] of Object.entries(raciKeys)) {

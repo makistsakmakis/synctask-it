@@ -83,6 +83,7 @@ export default function ProjectDetail() {
           <F k="Owner" v={p.owner} />
           <F k="Supervisor" v={p.supervisor} />
           <F k="Status" v={p.status} />
+          <F k="ON_GOING" v={p.on_going ? '✓ Ναι' : '—'} />
           <F k="Product" v={p.product} />
           <F k="Start date" v={fmtDate(p.start_date)} mono />
           <F k="End date" v={fmtDate(p.end_date)} mono />
