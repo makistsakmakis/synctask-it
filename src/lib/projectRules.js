@@ -45,6 +45,15 @@ export function applyProjectStatusRules({ prev, next, project }) {
   const p = norm(prev), n = norm(next)
   if (!n || p === n) return ok
 
+  // Υπογεγραμμένο project δεν επιστρέφει σε "Waiting Manager Approval"
+  if (n === 'Waiting Manager Approval') {
+    if (project.signed_on) return {
+      ...ok,
+      error: 'Το project είναι ήδη υπογεγραμμένο — δεν μπορεί να επιστρέψει σε "Waiting Manager Approval".',
+    }
+    return ok
+  }
+
   if (n === 'Not Started') {
     if (!project.signed_on) return {
       ...ok,

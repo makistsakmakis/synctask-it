@@ -13,6 +13,7 @@ import ProjectDetail from './pages/ProjectDetail'
 import ProjectForm from './pages/ProjectForm'
 import Diag from './pages/Diag'
 import ProjectImport from './pages/ProjectImport'
+import WaitingSignoffPage from './pages/WaitingSignoffPage'
 
 const SessionCtx = createContext(null)
 export const useSession = () => useContext(SessionCtx)
@@ -47,6 +48,8 @@ function Shell({ children }) {
           <NavLink to="/requests" end>Tasks</NavLink>
           {/* Projects list: all roles (resource sees only projects of their tasks) */}
           <NavLink to="/projects">Projects</NavLink>
+          {/* Waiting for Signoff: μόνο Admin + Supervisor (τελευταία επιλογή) */}
+          {(role === 'admin' || role === 'manager') && <NavLink to="/signoff">Waiting for Signoff</NavLink>}
         </nav>
         {profile.role === 'admin' && (
           <label className="f" style={{ marginTop: 14 }}>
@@ -138,6 +141,10 @@ export default function App() {
             <Route path="/projects/new" element={<ProjectForm />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="/projects/:id/edit" element={<ProjectForm />} />
+            <Route path="/signoff" element={
+              ['admin', 'manager'].includes(previewRole ?? profile.role)
+                ? <WaitingSignoffPage />
+                : <Navigate to="/projects" replace />} />
             {/* Legacy URLs */}
             <Route path="/dashboard" element={<Navigate to="/overview/tasks" replace />} />
             <Route path="/dashboard/projects" element={<Navigate to="/overview/projects" replace />} />
