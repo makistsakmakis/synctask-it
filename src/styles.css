@@ -320,6 +320,14 @@ input:disabled, select:disabled, textarea:disabled { background: #f3f4f1; color:
 
 /* Attachments panel (φόρμες Task & Project) */
 .attachbox { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); }
+
+/* Σχόλια (CommentsPanel) */
+.comments { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.comment { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.comment-head { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.comment-head b { font-weight: 600; }
+.comment-head .del { margin-left: auto; }
+.comment-body { font-size: 13.5px; margin-top: 3px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .attachbox h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
   color: var(--ink-soft); margin: 0 0 10px; }
 .attachbox ul { list-style: none; margin: 0 0 10px; padding: 0;

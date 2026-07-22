@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchProject, fetchProjectTasks, removeProject } from '../lib/projects'
 import { fetchResources } from '../lib/api'
-import { RequestGrid, StatusBadge, Flags, ConfirmDialog } from '../components/ui'
+import { RequestGrid, StatusBadge, Flags, ConfirmDialog, CommentsPanel } from '../components/ui'
 import { fmtDate, sanitizeHtml } from '../lib/meta'
+import { LISTS } from '../lib/sp'
 import { useSession } from '../App'
 
 const taskCols = [
@@ -18,7 +19,7 @@ const taskCols = [
 export default function ProjectDetail() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { effectiveRole } = useSession()
+  const { profile, effectiveRole } = useSession()
   const isAdmin = effectiveRole === 'admin'
   const [p, setP] = useState(null)
   const [tasks, setTasks] = useState([])
@@ -106,6 +107,8 @@ export default function ProjectDetail() {
             <p dangerouslySetInnerHTML={{ __html: sanitizeHtml(p.notes) }} />
           </div>
         )}
+
+        <CommentsPanel listName={LISTS.projects} itemId={id} currentEmail={profile.email} />
       </div>
 
       <h2 style={{ fontSize: 15, margin: '6px 2px 10px' }}>Tasks in this project ({tasks.length})</h2>

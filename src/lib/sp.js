@@ -268,3 +268,34 @@ export async function addAttachment(listName, itemId, file) {
 export async function deleteAttachment(listName, itemId, fileName) {
   return spFetch(`/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles/getByFileName('${encodeURIComponent(fileName)}')`, { method: 'POST', headers: { 'X-HTTP-Method': 'DELETE' } })
 }
+
+// ── List item comments — SharePoint REST (το Graph δεν τα εκθέτει) ────────────
+// Τα σχόλια είναι κοινά με το SharePoint UI: ό,τι γράφεται εδώ φαίνεται
+// και εκεί, και αντίστροφα.
+export async function getComments(listName, itemId) {
+  const d = await spFetch(
+    `/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/Comments?$top=100`)
+  return (d?.value ?? []).map((c) => ({
+    id: String(c.id),
+    text: c.text ?? '',
+    author: c.author?.name ?? '',
+    author_email: (c.author?.email ?? '').toLowerCase(),
+    created_at: c.createdDate,
+  }))
+}
+
+export async function addComment(listName, itemId, text) {
+  return spFetch(
+    `/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/Comments`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json;odata=nometadata' },
+      body: JSON.stringify({ text }),
+    })
+}
+
+export async function deleteComment(listName, itemId, commentId) {
+  return spFetch(
+    `/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/Comments(${commentId})`,
+    { method: 'POST', headers: { 'X-HTTP-Method': 'DELETE' } })
+}

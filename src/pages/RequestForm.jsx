@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime, sanitizeHtml } from '../lib/meta'
-import { DateInput, RichTextEditor, AttachmentsPanel, NoticeDialog } from '../components/ui'
+import { DateInput, RichTextEditor, AttachmentsPanel, CommentsPanel, NoticeDialog } from '../components/ui'
 import { LISTS } from '../lib/sp'
 import {
   fetchRequest, createRequest, updateRequest,
@@ -258,6 +258,7 @@ export default function RequestForm() {
         )}
 
         {editing && <AttachmentsPanel listName={LISTS.requests} itemId={id} canEdit={!isReadOnly} />}
+        {editing && <CommentsPanel listName={LISTS.requests} itemId={id} currentEmail={profile.email} />}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
           <button className="btn" onClick={() => nav(-1)} disabled={busy}>

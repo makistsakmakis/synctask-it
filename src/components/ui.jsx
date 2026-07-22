@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { STATUS_COLOR, STATUSES, QUICK_FILTERS, isAssigned, isOverdue, exportXLSX } from '../lib/meta'
-import { getAttachments, addAttachment, deleteAttachment } from '../lib/sp'
+import { STATUS_COLOR, STATUSES, QUICK_FILTERS, isAssigned, isOverdue, exportXLSX, fmtDateTime } from '../lib/meta'
+import { getAttachments, addAttachment, deleteAttachment, getComments, addComment, deleteComment } from '../lib/sp'
 
 // Date field: masked dd/mm/yyyy text entry + calendar picker button.
 // Stores/returns ISO yyyy-mm-dd ('' when empty/incomplete).
@@ -856,6 +856,78 @@ export function AttachmentsPanel({ listName, itemId, canEdit = true }) {
             {busy ? 'Εργασία…' : '+ Προσθήκη αρχείου'}
           </button>
         </>
+      )}
+    </div>
+  )
+}
+
+// ── Σχόλια list item (SharePoint REST — κοινά με το SharePoint UI) ────────────
+// currentEmail: email του τρέχοντος χρήστη — διαγραφή μόνο των δικών του σχολίων.
+export function CommentsPanel({ listName, itemId, currentEmail = '', canComment = true }) {
+  const [comments, setComments] = useState(null)
+  const [text, setText] = useState('')
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+  const me = (currentEmail ?? '').toLowerCase()
+
+  const load = () => getComments(listName, itemId)
+    .then((c) => { setComments(c); setErr('') })
+    .catch((e) => { setComments([]); setErr(e.message ?? 'Αποτυχία φόρτωσης σχολίων.') })
+
+  useEffect(() => { if (itemId) load() }, [itemId])
+
+  const post = async () => {
+    const t = text.trim()
+    if (!t) return
+    setBusy(true); setErr('')
+    try { await addComment(listName, itemId, t); setText(''); await load() }
+    catch (e) { setErr(e.message ?? 'Αποτυχία προσθήκης σχολίου.') }
+    setBusy(false)
+  }
+
+  const del = async (commentId) => {
+    setBusy(true); setErr('')
+    try { await deleteComment(listName, itemId, commentId); await load() }
+    catch (e) { setErr(e.message ?? 'Αποτυχία διαγραφής σχολίου.') }
+    setBusy(false)
+  }
+
+  return (
+    <div className="attachbox">
+      <h3>Σχόλια{comments ? ` (${comments.length})` : ''}</h3>
+      {err && <div className="err">{err}</div>}
+      {comments == null
+        ? <div style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Φόρτωση…</div>
+        : comments.length === 0
+          ? <div style={{ color: 'var(--ink-soft)', fontSize: 13, marginBottom: 10 }}>Δεν υπάρχουν σχόλια.</div>
+          : (
+            <div className="comments">
+              {comments.map((c) => (
+                <div className="comment" key={c.id}>
+                  <div className="comment-head">
+                    <b>{c.author || '—'}</b>
+                    <span className="mono" style={{ color: 'var(--ink-soft)', fontSize: 11.5 }}>{fmtDateTime(c.created_at)}</span>
+                    {me && c.author_email === me && (
+                      <button type="button" className="del" title="Διαγραφή σχολίου" disabled={busy} onClick={() => del(c.id)}>✕</button>
+                    )}
+                  </div>
+                  <div className="comment-body">{c.text}</div>
+                </div>
+              ))}
+            </div>
+          )}
+      {canComment && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 8 }}>
+          <textarea
+            value={text} rows={2} maxLength={1000} placeholder="Γράψτε σχόλιο…"
+            style={{ flex: 1, resize: 'vertical' }}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) post() }}
+          />
+          <button type="button" className="btn sm primary" disabled={busy || !text.trim()} onClick={post}>
+            {busy ? 'Εργασία…' : 'Αποστολή'}
+          </button>
+        </div>
       )}
     </div>
   )

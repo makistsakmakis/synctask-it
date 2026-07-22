@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime, sanitizeHtml } from '../lib/meta'
-import { DateInput, RichTextEditor, MultiPersonSelect, AttachmentsPanel, NoticeDialog } from '../components/ui'
+import { DateInput, RichTextEditor, MultiPersonSelect, AttachmentsPanel, CommentsPanel, NoticeDialog } from '../components/ui'
 import { LISTS, getAttachments } from '../lib/sp'
 import { fetchProject, createProject, updateProject, fetchProjectStatuses, signProject } from '../lib/projects'
 import { fetchUserOptions, fetchResourceOptions, fetchResources, fetchPendingTaskCount } from '../lib/api'
@@ -419,6 +419,7 @@ export default function ProjectForm() {
         </div>
 
         {editing && <AttachmentsPanel listName={LISTS.projects} itemId={id} canEdit={!isReadOnly} />}
+        {editing && <CommentsPanel listName={LISTS.projects} itemId={id} currentEmail={profile.email} />}
 
         {/* ── Υπογραφή (Signed On / Signed By — read-only) ─ */}
         {editing && (

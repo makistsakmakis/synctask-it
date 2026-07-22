@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fetchRequest, fetchHistory } from '../lib/api'
-import { StatusBadge, Flags } from '../components/ui'
+import { StatusBadge, Flags, CommentsPanel } from '../components/ui'
 import { fmtDate, fmtDateTime } from '../lib/meta'
+import { LISTS } from '../lib/sp'
 
 export default function RequestDetail() {
   const { id } = useParams()
@@ -55,7 +56,7 @@ export default function RequestDetail() {
 
 
       <div className="tabs">
-        {['General', 'Notes', 'History', 'Communications'].map((t) => (
+        {['General', 'Notes', 'Comments', 'History', 'Communications'].map((t) => (
           <button key={t} className={'tab' + (t === tab ? ' on' : '')} onClick={() => setTab(t)}>{t}</button>
         ))}
       </div>
@@ -91,6 +92,9 @@ export default function RequestDetail() {
             <Note t="COO notes" v={r.coo_notes} />
             <Note t="Resolution summary" v={r.resolution_summary} />
           </div>
+        )}
+        {tab === 'Comments' && (
+          <CommentsPanel listName={LISTS.requests} itemId={id} currentEmail={profile.email} />
         )}
         {tab === 'History' && (
           <ul className="history">
