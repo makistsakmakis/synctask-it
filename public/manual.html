@@ -53,8 +53,9 @@ main { margin-left: var(--sidebar); min-height: 100vh; }
               linear-gradient(135deg, #e30613 0%, #cf0511 55%, #99040d 100%); }
 .hero:after { content: ""; position: absolute; width: 420px; height: 420px; border: 70px solid rgba(255,255,255,.08); border-radius: 50%; right: -130px; bottom: -180px; }
 .hero-content { max-width: 880px; position: relative; z-index: 2; }
-.hero .logo-chip { display: inline-block; margin-bottom: 22px; }
-.hero .logo-chip img { height: 96px; display: block; filter: drop-shadow(0 8px 18px rgba(0,0,0,.25)); }
+/* SyncFlow logo: πάνω δεξιά στο hero */
+.hero .logo-chip { position: absolute; top: 44px; right: clamp(30px, 6vw, 100px); z-index: 2; }
+.hero .logo-chip img { height: 150px; display: block; filter: drop-shadow(0 8px 18px rgba(0,0,0,.3)); }
 .eyebrow { font-weight: 800; letter-spacing: .15em; text-transform: uppercase; font-size: .76rem; opacity: .92; }
 .hero h1 { font-size: clamp(2.6rem, 6vw, 5rem); line-height: .98; margin: .22em 0 .2em; letter-spacing: -.03em; }
 .hero p { font-size: clamp(1.02rem, 2vw, 1.28rem); max-width: 680px; margin: 0 0 24px; }
@@ -135,6 +136,8 @@ mark { background: #ffe06b; color: #251d1f; border-radius: 3px; padding: 0 .1em;
   .mobile-bar { display: flex; }
   main { margin-left: 0; padding-top: 56px; }
   .hero { min-height: 42vh; padding: 44px 24px; }
+  .hero .logo-chip { top: 18px; right: 18px; }
+  .hero .logo-chip img { height: 84px; }
   .content { padding: 0 14px; }
   .navdock { left: 50%; max-width: calc(100vw - 16px); overflow: auto; }
 }
@@ -179,8 +182,8 @@ mark { background: #ffe06b; color: #251d1f; border-radius: 3px; padding: 0 .1em;
 <main>
   <!-- ══════════════ HERO ══════════════ -->
   <section class="hero">
+    <span class="logo-chip"><img src="syncflow-logo.png" alt="SyncFlow"></span>
     <div class="hero-content">
-      <span class="logo-chip"><img src="syncflow-logo.png" alt="SyncFlow"></span>
       <div class="eyebrow">Inventor · IT Project Management</div>
       <h1>SyncFlow</h1>
       <p>Όλα τα IT projects και tasks της εταιρείας σε μία εφαρμογή: καταχώρηση, έγκριση, εκτέλεση και εποπτεία — με σαφείς ρόλους και κανόνες.</p>
