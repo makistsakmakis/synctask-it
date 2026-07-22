@@ -68,8 +68,10 @@ export default function RequestDetail() {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn"
-            title="Ανοίγει email προς τον προϊστάμενό σας (συμπληρώνετε τον παραλήπτη) για έγκριση του task"
-            onClick={() => { window.location.href = `mailto:?subject=${encodeURIComponent(`Έγκριση Task #${r.id} ${r.title}`)}` }}>
+            title={r.assigned_to_email
+              ? `Ανοίγει email έγκρισης προς τον manager του πεδίου Assigned to (${r.assigned_to_email})`
+              : 'Ανοίγει email έγκρισης — το task είναι Unassigned, συμπληρώστε τον παραλήπτη'}
+            onClick={() => { window.location.href = `mailto:${r.assigned_to_email ?? ''}?subject=${encodeURIComponent(`Έγκριση Task #${r.id} ${r.title}`)}` }}>
             ✉ Έγκριση Προϊσταμένου
           </button>
           {r.golive_required && (

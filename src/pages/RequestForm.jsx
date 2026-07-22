@@ -31,7 +31,11 @@ const DATE_KEYS = ['golive_required', 'expected_start', 'actual_completion']
 // μίνι-εγκριτική ροή (SignOff προϊσταμένου). Μέχρι το SignOff, οι μη-admin
 // βλέπουν/επεξεργάζονται ΜΟΝΟ αυτά τα πεδία. Μετά το SignOff το task
 // αντιμετωπίζεται όπως όλα τα άλλα.
+// Ο απλός χρήστης έχει επιπλέον ανοιχτό (και υποχρεωτικό) το Assigned to,
+// με επιλογές ΜΟΝΟ τους managers (Resources με Is_Manager) — εκεί πάει
+// και το email έγκρισης.
 const ONGOING_TASK_FIELDS = ['title', 'golive_required', 'requestor_notes', 'project_id']
+const ONGOING_USER_FIELDS = [...ONGOING_TASK_FIELDS, 'assigned_to_id']
 
 const EMPTY = {
   title: '', status: '', golive_required: '', request_type: '', priority: '',
@@ -65,10 +69,12 @@ export default function RequestForm() {
 
   const isReadOnly = !ongoingFlow && RIGHTS[effectiveRole]?.length === 0
 
+  const [resources, setResources] = useState([])
   useEffect(() => {
     fetchUserOptions().then(setUserOpts).catch(() => setUserOpts([]))
     fetchProjectOptions().then(setProjectOpts).catch(() => setProjectOpts([]))
     fetchTagOptions().then(setTagOpts).catch(() => setTagOpts([]))
+    fetchResources().then(setResources).catch(() => setResources([]))
   }, [])
 
   // New task: prefill project (from query) and default the assignee to the current user (admin only).
@@ -95,7 +101,10 @@ export default function RequestForm() {
   }, [id])
 
   const allowed = useMemo(() => {
-    if (ongoingFlow) return (f) => ONGOING_TASK_FIELDS.includes(f)
+    if (ongoingFlow) {
+      const list = effectiveRole === 'manager' ? ONGOING_TASK_FIELDS : ONGOING_USER_FIELDS
+      return (f) => list.includes(f)
+    }
     const list = RIGHTS[effectiveRole]
     return (f) => list === null || list.includes(f)
   }, [effectiveRole, ongoingFlow])
@@ -104,6 +113,16 @@ export default function RequestForm() {
   const visibleProjectOpts = useMemo(
     () => (ongoingFlow ? projectOpts.filter((p) => p.on_going) : projectOpts),
     [projectOpts, ongoingFlow])
+
+  // Απλός χρήστης σε ON_GOING flow: Assigned to = ΜΟΝΟ managers
+  // (χρήστες που αντιστοιχούν σε Resource με Is_Manager=TRUE)
+  const ongoingUserFlow = ongoingFlow && effectiveRole !== 'manager'
+  const managerEmails = useMemo(
+    () => new Set(resources.filter((r) => r.is_manager && r.email).map((r) => r.email)),
+    [resources])
+  const assigneeOpts = useMemo(
+    () => (ongoingUserFlow ? userOpts.filter((u) => u.email && managerEmails.has(u.email)) : userOpts),
+    [userOpts, ongoingUserFlow, managerEmails])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
   const setDate = (k) => (iso) => setForm((f) => ({ ...f, [k]: iso }))
@@ -142,8 +161,9 @@ export default function RequestForm() {
             .filter((r) => r.is_superuser && r.email).map((r) => r.email).join(',')
           window.location.href = `mailto:${coo}?subject=${encodeURIComponent(`Εγκεκριμένο Task #${target} ${subjTitle}`)}`
         } else {
-          // Απλός χρήστης → προϊστάμενος (τον συμπληρώνει χειροκίνητα στο email)
-          window.location.href = `mailto:?subject=${encodeURIComponent(`Έγκριση Task #${target} ${subjTitle}`)}`
+          // Απλός χρήστης → ο manager του πεδίου Assigned to
+          const mgrEmail = userOpts.find((u) => u.id === String(merged.assigned_to_id))?.email ?? ''
+          window.location.href = `mailto:${mgrEmail}?subject=${encodeURIComponent(`Έγκριση Task #${target} ${subjTitle}`)}`
         }
       }
       nav(`/requests/${target}`)
@@ -162,6 +182,9 @@ export default function RequestForm() {
       if (!form.project_id) return setError('Project is required.')
       if (!form.golive_required) return setError('Due date is required.')
       if (!(form.requestor_notes ?? '').replace(/<[^>]*>/g, '').trim()) return setError('Requestor notes is required.')
+      // Απλός χρήστης: υποχρεωτικός manager στο Assigned to
+      if (ongoingUserFlow && !form.assigned_to_id)
+        return setError('Assigned to is required — επιλέξτε τον manager που θα εγκρίνει το task.')
     }
 
     // Task Status Rules (κοινοί με το Kanban — βλ. lib/taskRules.js)
@@ -251,7 +274,7 @@ export default function RequestForm() {
             </span>
             <select value={form.assigned_to_id} onChange={set('assigned_to_id')} disabled={!allowed('assigned_to_id')}>
               <option value="">Unassigned</option>
-              {userOpts.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              {assigneeOpts.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
           </label>
           <label className="f">
