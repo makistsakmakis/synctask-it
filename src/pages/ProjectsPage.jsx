@@ -6,7 +6,13 @@ import { fetchRequests } from '../lib/api'
 import { fmtDate } from '../lib/meta'
 import { DataGrid, StatusBadge } from '../components/ui'
 
-const raciNames = (arr) => (arr ?? []).join(', ') || '—'
+// Στο grid: μέχρι 2 ονόματα + "+Ν" — το πλήρες σύνολο στο tooltip
+const raciNames = (arr) => {
+  const a = arr ?? []
+  if (a.length === 0) return '—'
+  return a.length <= 2 ? a.join(', ') : `${a.slice(0, 2).join(', ')} +${a.length - 2}`
+}
+const raciFull = (arr) => (arr ?? []).join(', ')
 
 const RACI_TOOLTIPS = {
   responsible: 'Responsible (R): The person or team who actually does the work to complete the task. They are responsible for driving the work to completion.',
@@ -37,17 +43,17 @@ const PROJ_COLUMNS = [
   { key: 'start_date', label: 'Start', ftype: 'date',       render: (p) => <span className="mono">{fmtDate(p.start_date)}</span>, text: (p) => fmtDate(p.start_date) },
   { key: 'deadline',   label: 'Deadline', ftype: 'date',    render: (p) => <span className="mono">{fmtDate(p.deadline)}</span>,   text: (p) => fmtDate(p.deadline) },
   { key: 'responsible', label: 'R-esponsible', tooltip: RACI_TOOLTIPS.responsible,
-    render: (p) => <span className="raci-names">{raciNames(p.responsible_abbr)}</span>,
-    text: (p) => raciNames(p.responsible_abbr) },
+    render: (p) => <span className="raci-names" title={raciFull(p.responsible_abbr)}>{raciNames(p.responsible_abbr)}</span>,
+    text: (p) => raciFull(p.responsible_abbr) },
   { key: 'accountable', label: 'A-ccountable', tooltip: RACI_TOOLTIPS.accountable,
-    render: (p) => <span className="raci-names">{raciNames(p.accountable_abbr)}</span>,
-    text: (p) => raciNames(p.accountable_abbr) },
+    render: (p) => <span className="raci-names" title={raciFull(p.accountable_abbr)}>{raciNames(p.accountable_abbr)}</span>,
+    text: (p) => raciFull(p.accountable_abbr) },
   { key: 'consulted',   label: 'C-onsulted', tooltip: RACI_TOOLTIPS.consulted,
-    render: (p) => <span className="raci-names">{raciNames(p.consulted_abbr)}</span>,
-    text: (p) => raciNames(p.consulted_abbr) },
+    render: (p) => <span className="raci-names" title={raciFull(p.consulted_abbr)}>{raciNames(p.consulted_abbr)}</span>,
+    text: (p) => raciFull(p.consulted_abbr) },
   { key: 'informed',    label: 'I-nformed', tooltip: RACI_TOOLTIPS.informed,
-    render: (p) => <span className="raci-names">{raciNames(p.informed_abbr)}</span>,
-    text: (p) => raciNames(p.informed_abbr) },
+    render: (p) => <span className="raci-names" title={raciFull(p.informed_abbr)}>{raciNames(p.informed_abbr)}</span>,
+    text: (p) => raciFull(p.informed_abbr) },
 ]
 
 export default function ProjectsPage() {

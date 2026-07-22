@@ -74,6 +74,13 @@ button { font-family: var(--font-body); cursor: pointer; }
 .mfilter .pop label input[type="checkbox"] { margin: 0; flex-shrink: 0; width: auto;
   accent-color: var(--accent); cursor: pointer; }
 .mfilter .pop label { justify-content: flex-start; text-align: left; }
+/* MultiPersonSelect: το popup έχει τα classes "mfilter pop" στο ΙΔΙΟ element,
+   οπότε χρειάζονται και compound selectors για σωστή στοίχιση checkbox-τίτλου */
+.mfilter.pop label { display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+  padding: 6px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; text-align: left; white-space: nowrap; }
+.mfilter.pop label:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.mfilter.pop label input[type="checkbox"] { margin: 0; flex-shrink: 0; width: auto;
+  accent-color: var(--accent); cursor: pointer; }
 .ctitle { display: block; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 
 /* % Complete: το πεδίο γεμίζει σαν μπάρα με βάση την τιμή */
