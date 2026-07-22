@@ -52,6 +52,8 @@ export default function WelcomePage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('tasks')
   const [filter, setFilter] = useState('upcoming')
+  // Related (default): ό,τι με αφορά. Owned: μόνο tasks Assigned σε μένα / projects όπου είμαι R ή A.
+  const [scope, setScope] = useState('related')
 
   // Activity feed
   const [feed, setFeed] = useState(null) // null = φόρτωση
@@ -90,6 +92,16 @@ export default function WelcomePage() {
     () => projects.filter((p) => myProjectRoles(p).length > 0),
     [projects, me, myResourceIds])
 
+  // ── Scope toggle: Related (όλα) / Owned ─
+  const ownedProject = (p) => ['responsible_ids', 'accountable_ids']
+    .some((k) => (p[k] ?? []).some((id) => myResourceIds.has(String(id))))
+  const visibleTasks = useMemo(
+    () => (scope === 'owned' ? myTasks.filter((t) => (t.assigned_to_email ?? '').toLowerCase() === me) : myTasks),
+    [myTasks, scope, me])
+  const visibleProjects = useMemo(
+    () => (scope === 'owned' ? myProjects.filter(ownedProject) : myProjects),
+    [myProjects, scope, myResourceIds])
+
   // ── Φίλτρα (κοινή λογική για tasks & projects) ─
   const [wkStart, wkEnd] = weekRange()
   const inWeek = (iso) => { if (!iso) return false; const d = new Date(iso.slice(0, 10)); return d >= wkStart && d <= wkEnd }
@@ -99,17 +111,17 @@ export default function WelcomePage() {
   const taskDone = (t) => t.status === 'Completed'
   const projDone = (p) => p.status === 'Completed'
 
-  const filteredTasks = useMemo(() => myTasks.filter((t) => {
+  const filteredTasks = useMemo(() => visibleTasks.filter((t) => {
     if (filter === 'upcoming') return !taskDone(t) && inWeek(t.golive_required)
     if (filter === 'overdue') return !taskDone(t) && isPast(t.golive_required)
     return taskDone(t) && within30(t.actual_completion || t.modified_at)
-  }), [myTasks, filter])
+  }), [visibleTasks, filter])
 
-  const filteredProjects = useMemo(() => myProjects.filter((p) => {
+  const filteredProjects = useMemo(() => visibleProjects.filter((p) => {
     if (filter === 'upcoming') return !projDone(p) && inWeek(p.deadline)
     if (filter === 'overdue') return !projDone(p) && isPast(p.deadline)
     return projDone(p) && within30(p.end_date || p.modified_at)
-  }), [myProjects, filter])
+  }), [visibleProjects, filter])
 
   const counts = useMemo(() => {
     const cnt = (rows, done, due, doneAt) => ({
@@ -118,9 +130,9 @@ export default function WelcomePage() {
       completed: rows.filter((r) => done(r) && within30(doneAt(r))).length,
     })
     return tab === 'tasks'
-      ? cnt(myTasks, taskDone, (t) => t.golive_required, (t) => t.actual_completion || t.modified_at)
-      : cnt(myProjects, projDone, (p) => p.deadline, (p) => p.end_date || p.modified_at)
-  }, [tab, myTasks, myProjects])
+      ? cnt(visibleTasks, taskDone, (t) => t.golive_required, (t) => t.actual_completion || t.modified_at)
+      : cnt(visibleProjects, projDone, (p) => p.deadline, (p) => p.end_date || p.modified_at)
+  }, [tab, visibleTasks, visibleProjects])
 
   // ── Activity Feed ─
   useEffect(() => {
@@ -189,12 +201,21 @@ export default function WelcomePage() {
   return (
     <>
       {/* ── Header ─ */}
-      <div className="pagehead">
+      <div className="pagehead" style={{ alignItems: 'flex-end' }}>
         <div>
           <div className="welcome-date">
             {new Date().toLocaleDateString('el-GR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
-          <h1 className="welcome-hi">Καλημέρα {firstName}</h1>
+          <h1 className="welcome-hi">{new Date().getHours() < 12 ? 'Καλημέρα' : 'Καλησπέρα'} {firstName}</h1>
+        </div>
+        {/* Scope toggle: Related / Owned */}
+        <div className="chips" style={{ gap: 6 }}>
+          <button className={'chip' + (scope === 'related' ? ' on' : '')}
+            title="Ό,τι με αφορά (Created By / Assigned / Owner / Supervisor / R,A,C,I)"
+            onClick={() => setScope('related')}>Related</button>
+          <button className={'chip' + (scope === 'owned' ? ' on' : '')}
+            title="Μόνο tasks Assigned σε εμένα · μόνο projects όπου είμαι R ή A"
+            onClick={() => setScope('owned')}>Owned</button>
         </div>
       </div>
 
