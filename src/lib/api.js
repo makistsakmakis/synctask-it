@@ -1,4 +1,4 @@
-import { LISTS, listItems, getItem, createItem, updateItemFields, getItemVersions, getSiteUsers, getTitleMap } from './sp'
+import { LISTS, listItems, getItem, createItem, updateItemFields, deleteItem, getItemVersions, getSiteUsers, getTitleMap } from './sp'
 import { REQUEST_FIELDS, MANAGER_FIELDS, RESOURCE_FIELDS, toSP, fromSP } from './fields'
 
 // Lookup-target lists for join resolution (display names in the site).
@@ -154,6 +154,10 @@ export async function createRequest(fields, profile) {
 
 export async function updateRequest(id, fields) {
   await updateItemFields(LISTS.requests, id, toSP(fields))
+}
+
+export async function removeRequest(id) {
+  await deleteItem(LISTS.requests, id)
 }
 
 // Πλήθος μη ολοκληρωμένων tasks ενός project (για το Completed confirm των Project Status Rules)

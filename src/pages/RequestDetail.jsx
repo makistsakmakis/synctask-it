@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
-import { fetchRequest, fetchHistory } from '../lib/api'
-import { StatusBadge, Flags, CommentsPanel } from '../components/ui'
+import { fetchRequest, fetchHistory, removeRequest } from '../lib/api'
+import { StatusBadge, Flags, CommentsPanel, ConfirmDialog } from '../components/ui'
 import { fmtDate, fmtDateTime, outlookDeadlineUrl } from '../lib/meta'
 import { LISTS } from '../lib/sp'
 
@@ -13,6 +13,8 @@ export default function RequestDetail() {
   const [r, setR] = useState(null)
   const [history, setHistory] = useState([])
   const [tab, setTab] = useState('General')
+  const [confirm, setConfirm] = useState(false)
+  const [busy, setBusy] = useState(false)
 
   const load = () => {
     fetchRequest(id).then(setR).catch(() => nav('/requests'))
@@ -27,6 +29,24 @@ export default function RequestDetail() {
   const teamEmails = (r.implementors ?? []).map((i) => i.resource?.email).join(',')
 
   const canEdit = isAdmin || r.status !== 'Completed'
+
+  // ── Task delete rules ─
+  // Πριν το SignOff: ο Created By ή ο Admin.
+  // Μετά το SignOff με Status=Not Started: ο Modified By ή ο Admin.
+  // Αν το status έχει προχωρήσει: ΜΟΝΟ ο Admin.
+  const me = (profile.email ?? '').toLowerCase()
+  const canDelete = isAdmin || (
+    r.status === 'Not Started' && (
+      !r.signoff
+        ? (r.requestor_email ?? '').toLowerCase() === me
+        : (r.modified_by_email ?? '') === me
+    ))
+
+  const del = async () => {
+    setBusy(true)
+    try { await removeRequest(id); nav('/requests') }
+    catch { setBusy(false); setConfirm(false) }
+  }
 
   const F = ({ k, v, mono }) => (
     <div className="field"><div className="k">{k}</div><div className={'v' + (mono ? ' mono' : '')}>{v ?? '—'}</div></div>
@@ -59,6 +79,7 @@ export default function RequestDetail() {
             </button>
           )}
           {canEdit && <button className="btn" onClick={() => nav(`/requests/${id}/edit`)}>Edit</button>}
+          {canDelete && <button className="btn danger" onClick={() => setConfirm(true)}>Delete</button>}
         </div>
       </div>
 
@@ -128,6 +149,12 @@ export default function RequestDetail() {
           </div>
         )}
       </div>
+
+      {confirm && (
+        <ConfirmDialog title="Delete task" busy={busy}
+          body={`Θα διαγραφεί οριστικά το task #${r.id} "${r.title}" (μαζί με συνημμένα και σχόλια). Συνέχεια;`}
+          onYes={del} onNo={() => setConfirm(false)} />
+      )}
     </>
   )
 }

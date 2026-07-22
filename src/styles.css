@@ -65,10 +65,11 @@ button { font-family: var(--font-body); cursor: pointer; }
 .spacer { flex: 1; }
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-/* Το tablewrap περιορίζεται στο ορατό ύψος: η οριζόντια scrollbar του grid
-   μένει πάντα μέσα στην οθόνη — αν οι γραμμές δεν χωράνε, scrollάρει
-   κάθετα ΜΕΣΑ στον πίνακα (με sticky επικεφαλίδες). */
-.tablewrap { overflow: auto; max-height: max(240px, calc(100dvh - 330px)); }
+/* Το tablewrap περιορίζεται στο ορατό ύψος (max-height δυναμικά από το
+   DataGrid βάσει της θέσης του στο viewport): η οριζόντια scrollbar μένει
+   πάντα μέσα στην οθόνη — αν οι γραμμές δεν χωράνε, scrollάρει κάθετα
+   ΜΕΣΑ στον πίνακα (με sticky επικεφαλίδες). */
+.tablewrap { overflow: auto; }
 .tablewrap thead th { position: sticky; top: 0; background: var(--surface); z-index: 5;
   box-shadow: 0 1px 0 var(--line); /* το border-bottom χάνεται στο sticky με border-collapse */ }
 .auditbox { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); }

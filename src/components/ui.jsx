@@ -275,6 +275,21 @@ export function DataGrid({
   const [page, setPage] = useState(0)
   const popRef = useRef(null)
   const PAGE_SIZE = 10
+
+  // Δυναμικό ύψος πίνακα: απλώνεται μέχρι το κάτω όριο του viewport, ώστε η
+  // οριζόντια scrollbar να είναι πάντα ορατή ΧΩΡΙΣ αναξιοποίητο κενό από κάτω.
+  const wrapRef = useRef(null)
+  const [maxH, setMaxH] = useState(null)
+  useEffect(() => {
+    const update = () => {
+      if (!wrapRef.current) return
+      const top = wrapRef.current.getBoundingClientRect().top
+      setMaxH(Math.max(240, window.innerHeight - top - 42))
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  })
   const NONE = '\u0000__none__' // sentinel: «καμία τιμή επιλεγμένη» στο checkbox filter
 
   // Επιστροφή στην 1η σελίδα όταν αλλάζει οποιοδήποτε φίλτρο
@@ -455,7 +470,7 @@ export function DataGrid({
         {visible.length === 0 ? (
           <div className="empty">{emptyHint ?? 'Δεν βρέθηκαν αποτελέσματα.'}</div>
         ) : (
-          <div className="tablewrap">
+          <div className="tablewrap" ref={wrapRef} style={maxH ? { maxHeight: maxH } : undefined}>
             <table>
               <thead>
                 <tr>

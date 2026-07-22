@@ -106,6 +106,7 @@ export const fromSP = (item) => {
   r.requestor_email = item.createdBy?.user?.email       ?? ''
   r.created_by      = item.createdBy?.user?.displayName ?? ''
   r.modified_by     = item.lastModifiedBy?.user?.displayName ?? ''
+  r.modified_by_email = (item.lastModifiedBy?.user?.email ?? '').toLowerCase()
   r.request_date    = (item.createdDateTime ?? '').slice(0, 10)
   r.created_at      = item.createdDateTime
   r.modified_at     = item.lastModifiedDateTime
