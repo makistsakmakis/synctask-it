@@ -38,7 +38,7 @@ button { font-family: var(--font-body); cursor: pointer; }
 .side nav a { display: block; padding: 9px 11px; border-radius: 7px; color: #b0b8c4;
   text-decoration: none; font-weight: 500; margin-bottom: 2px; }
 .side nav a.active, .side nav a:hover { background: rgba(37,99,235,.18); color: #fff; }
-.side-inventor { margin-top: auto; background: #fff; border-radius: 8px; padding: 9px 11px; width: 100%; }
+.side-inventor { margin-top: auto; width: 100%; display: block; }
 .side .out { margin-top: 10px; background: none; border: 1px solid #2a2f3a; color: #8a95a2;
   border-radius: 7px; padding: 8px; }
 .side .help-link { display: block; text-align: center; color: #8a95a2; text-decoration: none;
