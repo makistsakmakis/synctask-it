@@ -6,6 +6,8 @@ import { fetchProjects } from '../lib/projects'
 import { RequestGrid, StatusBadge, Flags } from '../components/ui'
 import { fmtDate } from '../lib/meta'
 
+const taskId   = { key: 'id', label: '#', tooltip: 'Task ID (autonumber)',
+  render: (r) => <span className="mono">#{r.id}</span>, text: (r) => `#${r.id}` }
 const title    = { key: 'title',    label: 'Title',    ftype: 'text', render: (r) => <span className="ctitle" title={r.title}>{r.title}</span> }
 const status   = { key: 'status',   label: 'Status',   render: (r) => <StatusBadge status={r.status} />, text: (r) => r.status ?? '' }
 const priority = { key: 'priority', label: 'Priority', render: (r) => r.priority ?? '—' }
@@ -31,22 +33,22 @@ const VIEWS = {
   requestor: {
     title: 'My project tasks', sub: 'Tasks under your projects (view only).',
     filters: FILTERS,
-    columns: [title, project, tag, status, assigned, priority, golive, expStart, flags],
+    columns: [taskId, title, project, tag, status, assigned, priority, golive, expStart, flags],
   },
   manager: {
     title: 'Supervised project tasks', sub: 'Tasks under projects you supervise (view only).',
     filters: FILTERS,
-    columns: [title, project, tag, requestor, status, assigned, priority, golive, flags],
+    columns: [taskId, title, project, tag, requestor, status, assigned, priority, golive, flags],
   },
   resource: {
     title: 'Assigned to me', sub: 'Tasks assigned to you.',
     filters: FILTERS,
-    columns: [title, project, tag, status, priority, expStart, requestor, flags],
+    columns: [taskId, title, project, tag, status, priority, expStart, requestor, flags],
   },
   admin: {
     title: 'Tasks', sub: 'Full operational list of tasks.',
     filters: FILTERS,
-    columns: [title, requestor, assigned, project, tag, status, priority, golive, expStart, flags],
+    columns: [taskId, title, requestor, assigned, project, tag, status, priority, golive, expStart, flags],
   },
 }
 

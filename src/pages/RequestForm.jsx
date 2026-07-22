@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useSession } from '../App'
-import { fmtDateTime, sanitizeHtml } from '../lib/meta'
+import { fmtDateTime, sanitizeHtml, outlookDeadlineUrl } from '../lib/meta'
 import { DateInput, RichTextEditor, AttachmentsPanel, CommentsPanel, NoticeDialog } from '../components/ui'
 import { LISTS } from '../lib/sp'
 import {
@@ -147,13 +147,28 @@ export default function RequestForm() {
     <>
       <div className="pagehead">
         <div>
-          <h1>{editing ? (isReadOnly ? 'View task' : 'Edit task') : 'New task'}</h1>
+          <h1>
+            {editing
+              ? <>{isReadOnly ? 'View task' : 'Edit task'} <span style={{ color: 'var(--accent)' }}>#{id}</span></>
+              : 'New task'}
+          </h1>
           <div className="sub">
             {isReadOnly ? 'You can view this task but cannot edit it.'
               : editing ? "Fields outside your role's edit rights are locked."
               : 'New tasks default to status "Not Started".'}
           </div>
         </div>
+        {editing && form.golive_required && (
+          <button type="button" className="btn"
+            title="Δημιουργεί Outlook calendar event στη DueDate 17:00 — το αποθηκεύετε εσείς"
+            onClick={() => window.open(outlookDeadlineUrl({
+              title: form.title,
+              project: projectOpts.find((p) => p.id === String(form.project_id))?.title,
+              dueISO: form.golive_required,
+            }), '_blank')}>
+            📅 Add Outlook
+          </button>
+        )}
       </div>
       {error && <div className="err">{error}</div>}
       <NoticeDialog notice={notice} onClose={() => setNotice(null)} />

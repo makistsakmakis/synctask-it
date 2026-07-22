@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fetchRequest, fetchHistory } from '../lib/api'
 import { StatusBadge, Flags, CommentsPanel } from '../components/ui'
-import { fmtDate, fmtDateTime } from '../lib/meta'
+import { fmtDate, fmtDateTime, outlookDeadlineUrl } from '../lib/meta'
 import { LISTS } from '../lib/sp'
 
 export default function RequestDetail() {
@@ -42,14 +42,20 @@ export default function RequestDetail() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <img src="/task-icon.svg" alt="" className="task-icon" />
           <div>
-            <div className="mono" style={{ color: 'var(--ink-soft)' }}>{r.reference_number}</div>
-            <h1>{r.title}</h1>
+            <div className="mono" style={{ color: 'var(--ink-soft)' }}>{r.reference_number ?? `#${r.id}`}</div>
+            <h1><span style={{ color: 'var(--accent)' }}>#{r.id}</span> {r.title}</h1>
             <div className="sub" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
               <StatusBadge status={r.status} /> <Flags r={r} /> · {r.priority} priority · {r.request_type}
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {r.golive_required && (
+            <button className="btn" title="Δημιουργεί Outlook calendar event στη DueDate 17:00 — το αποθηκεύετε εσείς"
+              onClick={() => window.open(outlookDeadlineUrl({ title: r.title, project: r.project_name, dueISO: r.golive_required }), '_blank')}>
+              📅 Add Outlook
+            </button>
+          )}
           {canEdit && <button className="btn" onClick={() => nav(`/requests/${id}/edit`)}>Edit</button>}
         </div>
       </div>

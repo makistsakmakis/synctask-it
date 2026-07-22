@@ -52,6 +52,26 @@ export function sanitizeHtml(html) {
 export const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB') : '—')
 export const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('en-GB') : '—')
 
+// Outlook deeplink: ανοίγει προσυμπληρωμένο calendar event στο Outlook web —
+// την τελική αποθήκευση την κάνει ο χρήστης.
+// "Deadline: <Task Title (trimmed)> | <Project>" στη DueDate, 17:00-18:00.
+export function outlookDeadlineUrl({ title, project, dueISO, hour = 17 }) {
+  if (!dueISO) return ''
+  const t = (title ?? '').length > 60 ? (title ?? '').slice(0, 59) + '…' : (title ?? '')
+  const subject = `Deadline: ${t}` + (project ? ` | ${project}` : '')
+  const d = dueISO.slice(0, 10)
+  const hh = String(hour).padStart(2, '0')
+  const he = String(hour + 1).padStart(2, '0')
+  const q = new URLSearchParams({
+    path: '/calendar/action/compose',
+    rru: 'addevent',
+    subject,
+    startdt: `${d}T${hh}:00:00`,
+    enddt: `${d}T${he}:00:00`,
+  })
+  return `https://outlook.office.com/calendar/0/deeplink/compose?${q.toString()}`
+}
+
 // Export visible rows to .xlsx (SheetJS). columns = DataGrid column defs.
 export async function exportXLSX(headers, data, filename = 'export.xlsx') {
   const XLSX = await import('xlsx')
