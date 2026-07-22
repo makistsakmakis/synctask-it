@@ -299,3 +299,29 @@ export async function deleteComment(listName, itemId, commentId) {
     `/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/Comments(${commentId})`,
     { method: 'POST', headers: { 'X-HTTP-Method': 'DELETE' } })
 }
+
+// Σχόλια + replies (για το Activity Feed της Welcome Screen)
+const mapComment = (c) => ({
+  id: String(c.id),
+  text: c.text ?? '',
+  author: c.author?.name ?? '',
+  author_email: (c.author?.email ?? '').toLowerCase(),
+  created_at: c.createdDate,
+  replies: (c.replies ?? []).map(mapComment),
+})
+
+export async function getCommentsWithReplies(listName, itemId) {
+  const d = await spFetch(
+    `/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/Comments?$expand=replies&$top=50`)
+  return (d?.value ?? []).map(mapComment)
+}
+
+export async function addReply(listName, itemId, commentId, text) {
+  return spFetch(
+    `/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/Comments(${commentId})/replies`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json;odata=nometadata' },
+      body: JSON.stringify({ text }),
+    })
+}

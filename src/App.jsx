@@ -14,6 +14,7 @@ import ProjectForm from './pages/ProjectForm'
 import Diag from './pages/Diag'
 import ProjectImport from './pages/ProjectImport'
 import WaitingSignoffPage from './pages/WaitingSignoffPage'
+import WelcomePage from './pages/WelcomePage'
 
 const SessionCtx = createContext(null)
 export const useSession = () => useContext(SessionCtx)
@@ -40,6 +41,8 @@ function Shell({ children }) {
           {profile.email}<br />{ROLE_LABEL[role]}{previewRole ? ' (preview)' : ''}
         </div>
         <nav>
+          {/* Welcome: 1η επιλογή, όλοι οι ρόλοι */}
+          <NavLink to="/welcome">Welcome</NavLink>
           {/* Tasks Overview: admin only */}
           {role === 'admin' && <NavLink to="/overview/tasks">Tasks Overview</NavLink>}
           {/* Projects Overview: admin only (kanban/dashboard) */}
@@ -130,7 +133,8 @@ export default function App() {
       <BrowserRouter>
         <Shell>
           <Routes>
-            <Route path="/" element={<Navigate to={profile.role === 'admin' ? '/overview/tasks' : profile.role === 'resource' ? '/requests' : '/projects'} replace />} />
+            <Route path="/" element={<Navigate to="/welcome" replace />} />
+            <Route path="/welcome" element={<WelcomePage />} />
             <Route path="/overview/tasks" element={profile.role === 'admin' ? <TasksOverview /> : <Navigate to="/overview/projects" replace />} />
             <Route path="/overview/projects" element={profile.role === 'admin' ? <ProjectsOverview /> : <Navigate to="/projects" replace />} />
             <Route path="/requests" element={<RequestsPage />} />

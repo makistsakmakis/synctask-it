@@ -321,6 +321,21 @@ input:disabled, select:disabled, textarea:disabled { background: #f3f4f1; color:
 /* Attachments panel (φόρμες Task & Project) */
 .attachbox { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); }
 
+/* Welcome Screen */
+.welcome-date { font-size: 13px; font-weight: 700; letter-spacing: .02em; }
+.welcome-hi { font-size: 30px; font-weight: 500; margin-top: 6px; }
+.welcome-list { display: flex; flex-direction: column; }
+.welcome-row { padding: 9px 6px; border-bottom: 1px solid var(--line); font-size: 13.5px; cursor: pointer; }
+.welcome-row:hover { background: #f2f4ef; }
+.welcome-row .soft { color: var(--ink-soft); }
+.feed-replies { margin: 8px 0 0 14px; padding-left: 10px; border-left: 2px solid var(--line);
+  display: flex; flex-direction: column; gap: 6px; }
+.feed-reply { font-size: 12.5px; }
+.feed-foot { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.feed-foot a { font-size: 11.5px; color: var(--ink-soft); cursor: pointer; text-decoration: none; }
+.feed-foot a:hover { text-decoration: underline; color: var(--accent); }
+.linklike { border: none; background: none; padding: 0; font-size: 11.5px; color: var(--accent); cursor: pointer; }
+
 /* Σχόλια (CommentsPanel) */
 .comments { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
 .comment { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
