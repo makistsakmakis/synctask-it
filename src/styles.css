@@ -44,6 +44,7 @@ button { font-family: var(--font-body); cursor: pointer; }
 .side .help-link { display: block; text-align: center; color: #8a95a2; text-decoration: none;
   font-size: 13px; padding: 8px; border-radius: 7px; margin-top: 4px; }
 .side .help-link:hover { background: rgba(37,99,235,.18); color: #fff; }
+.side .ver { text-align: center; color: #5a626e; font-size: 11px; margin-top: 4px; }
 .main { flex: 1; padding: 26px 30px; min-width: 0; overflow-y: auto; }
 
 .pagehead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }

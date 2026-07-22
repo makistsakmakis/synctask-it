@@ -72,6 +72,7 @@ function Shell({ children }) {
         </button>
         {/* Help: το εγχειρίδιο χρήσης σε ξεχωριστό tab (τέρμα κάτω) */}
         <a className="help-link" href="/manual.html" target="_blank" rel="noreferrer">❓ Help</a>
+        <div className="ver">SyncFlow v1.0</div>
       </aside>
       <main className="main">{children}</main>
     </div>
