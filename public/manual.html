@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="SyncFlow — Εγχειρίδιο Χρήσης, διαδραστική έκδοση">
+<title>SyncFlow — Εγχειρίδιο Χρήσης</title>
+<style>
+:root {
+  --brand: #e30613; --brand-dark: #b10510; --brand-soft: #fdecec;
+  --ink: #231f20; --muted: #746a6e; --paper: #fff; --soft: #f6f4f2;
+  --line: #e7e0dd; --ok: #2c7a4b; --warn-bg: #fdf6e3; --warn-ink: #8a6d1a;
+  --shadow: 0 18px 50px rgba(35,31,32,.10); --sidebar: 320px;
+}
+* { box-sizing: border-box; margin: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Segoe UI', Inter, Roboto, Arial, sans-serif; background: var(--soft); color: var(--ink); line-height: 1.7; font-size: 15px; }
+a { color: inherit; }
+button, input { font: inherit; }
+
+/* ── Progress bar ─ */
+.progress { position: fixed; top: 0; left: 0; height: 4px; background: var(--brand); width: 0; z-index: 100; }
+
+/* ── Sidebar ─ */
+.sidebar { position: fixed; inset: 0 auto 0 0; width: var(--sidebar); background: #201c1d; color: #fff; z-index: 30;
+  display: flex; flex-direction: column; box-shadow: 12px 0 40px rgba(0,0,0,.16); }
+.brand { padding: 22px 20px 16px; border-bottom: 1px solid rgba(255,255,255,.09); }
+.brand .logo-chip { background: #fff; border-radius: 12px; padding: 10px 12px; display: block; }
+.brand .logo-chip img { width: 100%; display: block; }
+.brand strong { display: block; font-size: 1.1rem; margin-top: 12px; }
+.brand small { color: #cfc5c8; }
+.search-wrap { padding: 14px 16px 8px; }
+#search { width: 100%; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.08); color: #fff;
+  border-radius: 11px; padding: 10px 13px; outline: none; }
+#search::placeholder { color: #aaa0a4; }
+.toc { flex: 1; overflow-y: auto; padding: 8px 10px 20px; }
+.toc-link { display: block; padding: 9px 13px; border-radius: 9px; color: #d8ced1; text-decoration: none;
+  font-size: 13.5px; border-left: 3px solid transparent; cursor: pointer; }
+.toc-link b { color: #9c9195; margin-right: 7px; font-variant-numeric: tabular-nums; }
+.toc-link:hover, .toc-link.active { background: rgba(227,6,19,.18); color: #fff; border-left-color: var(--brand); }
+.toc-link.hidden { display: none; }
+.side-foot { padding: 12px 20px; border-top: 1px solid rgba(255,255,255,.09); color: #9c9195; font-size: 11.5px; }
+
+/* ── Mobile bar ─ */
+.mobile-bar { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 40; background: #201c1d; color: #fff;
+  padding: 10px 14px; align-items: center; justify-content: space-between; }
+.mobile-bar button { background: none; border: 1px solid rgba(255,255,255,.2); color: #fff; border-radius: 8px; padding: 5px 11px; cursor: pointer; }
+
+/* ── Main / Hero ─ */
+main { margin-left: var(--sidebar); min-height: 100vh; }
+.hero { min-height: 46vh; color: #fff; padding: 64px clamp(28px, 7vw, 110px); display: flex; align-items: center; position: relative; overflow: hidden;
+  background: radial-gradient(circle at 82% 15%, rgba(255,255,255,.22), transparent 26%),
+              linear-gradient(135deg, #e30613 0%, #cf0511 55%, #99040d 100%); }
+.hero:after { content: ""; position: absolute; width: 420px; height: 420px; border: 70px solid rgba(255,255,255,.08); border-radius: 50%; right: -130px; bottom: -180px; }
+.hero-content { max-width: 880px; position: relative; z-index: 2; }
+.hero .logo-chip { background: #fff; border-radius: 14px; padding: 10px 14px; display: inline-block; margin-bottom: 22px; box-shadow: 0 10px 24px rgba(0,0,0,.18); }
+.hero .logo-chip img { height: 84px; display: block; }
+.eyebrow { font-weight: 800; letter-spacing: .15em; text-transform: uppercase; font-size: .76rem; opacity: .92; }
+.hero h1 { font-size: clamp(2.6rem, 6vw, 5rem); line-height: .98; margin: .22em 0 .2em; letter-spacing: -.03em; }
+.hero p { font-size: clamp(1.02rem, 2vw, 1.28rem); max-width: 680px; margin: 0 0 24px; }
+.meta { display: inline-flex; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28);
+  padding: 8px 15px; border-radius: 999px; backdrop-filter: blur(8px); font-size: .92rem; }
+
+/* ── Content sections ─ */
+.content { max-width: 980px; margin: -50px auto 130px; padding: 0 26px; position: relative; z-index: 3; }
+.doc-section { background: var(--paper); border: 1px solid var(--line); border-radius: 20px;
+  padding: clamp(26px, 5vw, 52px); margin: 0 0 24px; box-shadow: var(--shadow); scroll-margin-top: 26px; }
+.doc-section h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); margin: 0 0 .35em; line-height: 1.2; }
+.kicker { color: var(--brand); font-size: .74rem; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+.doc-section h3 { font-size: 1.12rem; margin: 1.6em 0 .5em; padding-left: 13px; border-left: 4px solid var(--brand); line-height: 1.25; }
+p { margin: .65em 0; }
+.lead { font-size: 1.06rem; color: var(--muted); font-weight: 600; }
+ul, ol { padding-left: 1.35rem; margin: .6em 0; }
+li { margin: .45em 0; }
+li::marker { color: var(--brand); }
+
+/* ── Role badges ─ */
+.role { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px; letter-spacing: .3px; vertical-align: middle; }
+.role.admin { background: #231f20; color: #fff; }
+.role.owner { background: #eaf0fd; color: #1d4ed8; }
+.role.supervisor { background: #e8f5ee; color: #2c7a4b; }
+.role.implementor { background: #fdf0e6; color: #b45f14; }
+
+/* ── Callouts ─ */
+.benefit { background: #f0f7f2; border-left: 4px solid var(--ok); border-radius: 8px; padding: 9px 14px; margin: 12px 0; font-size: 13.5px; }
+.benefit::before { content: "💡 Όφελος: "; font-weight: 700; color: var(--ok); }
+.warn { background: var(--warn-bg); color: var(--warn-ink); border-left: 4px solid #d9b23a; border-radius: 8px; padding: 9px 14px; margin: 12px 0; font-size: 13.5px; }
+.note { background: var(--brand-soft); border-left: 4px solid var(--brand); border-radius: 8px; padding: 9px 14px; margin: 12px 0; font-size: 13.5px; }
+
+/* ── Role-diff box ─ */
+.rolediff { border: 1px solid var(--line); border-radius: 12px; margin: 16px 0; overflow: hidden; }
+.rolediff .rd-head { background: #faf7f6; padding: 9px 15px; font-weight: 700; font-size: 12.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+.rolediff table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.rolediff td, .rolediff th { padding: 9px 15px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+.rolediff th { width: 150px; white-space: nowrap; }
+
+/* ── Flow diagrams ─ */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 16px 0; }
+.flow .st { background: var(--brand-soft); border: 1.5px solid var(--brand); color: var(--brand-dark); border-radius: 10px;
+  padding: 9px 14px; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; text-align: center; max-width: 200px; }
+.flow .st.gray { background: #f3f1ef; border-color: #9aa1ad; color: #4b5563; }
+.flow .st.green { background: #e8f5ee; border-color: var(--ok); color: var(--ok); }
+.flow .ar { align-self: center; padding: 0 9px; color: var(--muted); font-size: 17px; }
+.flow .ar small { display: block; font-size: 10.5px; text-align: center; margin-top: -4px; }
+.flowcap { font-size: 12px; color: var(--muted); margin: -6px 0 12px; }
+
+/* ── Tables ─ */
+table.plain { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 12px 0; }
+table.plain th, table.plain td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; }
+table.plain th { background: #faf7f6; font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; }
+
+/* ── Glossary ─ */
+dl.gloss dt { font-weight: 700; margin-top: 14px; color: var(--brand); }
+dl.gloss dd { margin-left: 0; font-size: 14px; }
+
+kbd { background: #f3f1ef; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; font-size: 12px; font-family: Consolas, monospace; }
+.btn-sample { display: inline-block; background: var(--brand); color: #fff; border-radius: 6px; padding: 2px 10px; font-size: 12.5px; font-weight: 600; }
+.btn-sample.gray { background: #6b7280; }
+a.xref { color: var(--brand); cursor: pointer; text-decoration: underline; }
+mark { background: #ffe06b; color: #251d1f; border-radius: 3px; padding: 0 .1em; }
+
+/* ── Nav dock ─ */
+.navdock { position: fixed; left: calc(var(--sidebar) + (100vw - var(--sidebar)) / 2); transform: translateX(-50%); bottom: 18px; z-index: 25;
+  display: flex; gap: 6px; padding: 7px; background: rgba(32,28,29,.94); border: 1px solid rgba(255,255,255,.13);
+  border-radius: 15px; box-shadow: 0 14px 35px rgba(0,0,0,.25); backdrop-filter: blur(12px); }
+.navdock button { border: 0; background: transparent; color: #fff; border-radius: 10px; padding: 8px 12px; cursor: pointer; white-space: nowrap; }
+.navdock button:hover:not(:disabled) { background: var(--brand); }
+.navdock button:disabled { opacity: .35; cursor: default; }
+.section-count { color: #d8ced1; padding: 8px 6px; font-size: .85rem; min-width: 54px; text-align: center; }
+
+@media (max-width: 960px) {
+  :root { --sidebar: 0px; }
+  .sidebar { transform: translateX(-100%); width: min(88vw, 340px); transition: .25s; }
+  .sidebar.open { transform: translateX(0); }
+  .mobile-bar { display: flex; }
+  main { margin-left: 0; padding-top: 56px; }
+  .hero { min-height: 42vh; padding: 44px 24px; }
+  .content { padding: 0 14px; }
+  .navdock { left: 50%; max-width: calc(100vw - 16px); overflow: auto; }
+}
+@media print { .sidebar, .navdock, .mobile-bar, .progress { display: none; } main { margin-left: 0; } .hero { min-height: auto; } }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<div class="mobile-bar">
+  <button id="menuBtn" aria-label="Ευρετήριο">☰ Ευρετήριο</button>
+  <span>SyncFlow · Εγχειρίδιο</span>
+</div>
+
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <span class="logo-chip"><img src="INVENTOR_LOGO_SM_TRANS.png" alt="inventor"></span>
+    <strong>SyncFlow</strong>
+    <small>Εγχειρίδιο Χρήσης · Projects &amp; Tasks IT</small>
+  </div>
+  <div class="search-wrap">
+    <input id="search" type="search" placeholder="🔍 Αναζήτηση στο εγχειρίδιο…" autocomplete="off">
+  </div>
+  <nav class="toc" id="toc">
+    <a class="toc-link" data-go="intro"><b>1</b> Εισαγωγή &amp; Ρόλοι</a>
+    <a class="toc-link" data-go="concepts"><b>2</b> Βασικές Έννοιες: RACI, Kanban, Gantt</a>
+    <a class="toc-link" data-go="welcome"><b>3</b> Welcome Screen</a>
+    <a class="toc-link" data-go="projects"><b>4</b> Projects</a>
+    <a class="toc-link" data-go="projflow"><b>5</b> Κύκλος Ζωής Project &amp; Υπογραφή</a>
+    <a class="toc-link" data-go="tasks"><b>6</b> Tasks</a>
+    <a class="toc-link" data-go="ongoing"><b>7</b> ON_GOING &amp; Μίνι-Εγκριτική Ροή</a>
+    <a class="toc-link" data-go="signoff"><b>8</b> Οθόνη Waiting for Signoff</a>
+    <a class="toc-link" data-go="overviews"><b>9</b> Overviews</a>
+    <a class="toc-link" data-go="common"><b>10</b> Κοινές Λειτουργίες</a>
+    <a class="toc-link" data-go="glossary"><b>11</b> Γλωσσάρι</a>
+  </nav>
+  <div class="side-foot">inventor® · We invent. You live.<br>Έκδοση Ιουλίου 2026</div>
+</aside>
+
+<main>
+  <!-- ══════════════ HERO ══════════════ -->
+  <section class="hero">
+    <div class="hero-content">
+      <span class="logo-chip"><img src="syncflow-logo.png" alt="SyncFlow"></span>
+      <div class="eyebrow">Inventor · IT Project Management</div>
+      <h1>SyncFlow</h1>
+      <p>Όλα τα IT projects και tasks της εταιρείας σε μία εφαρμογή: καταχώρηση, έγκριση, εκτέλεση και εποπτεία — με σαφείς ρόλους και κανόνες.</p>
+      <span class="meta">📖 Εγχειρίδιο Χρήσης · Ιούλιος 2026</span>
+    </div>
+  </section>
+
+  <div class="content">
+
+  <!-- ══ 1. ΕΙΣΑΓΩΓΗ ══ -->
+  <section class="doc-section" id="intro">
+    <div class="kicker">Ενότητα 1</div>
+    <h2>Εισαγωγή &amp; Ρόλοι</h2>
+    <p class="lead">Το SyncFlow οργανώνει τα IT projects και τα καθημερινά tasks σε ένα σημείο, πάνω σε SharePoint.</p>
+
+    <h3>Τι είναι το SyncFlow</h3>
+    <p>Μια web εφαρμογή όπου καταχωρούνται, εγκρίνονται και παρακολουθούνται τα <b>Projects</b> (έργα με έναρξη, deadline και ομάδα RACI) και τα <b>Tasks</b> (επιμέρους εργασίες, αιτήματα, bug fixes). Τα δεδομένα ζουν σε SharePoint lists — ό,τι βλέπετε στην εφαρμογή είναι ορατό και στο SharePoint, και αντίστροφα (π.χ. σχόλια, συνημμένα).</p>
+    <div class="benefit">Μία πηγή αλήθειας: καμία εργασία δεν χάνεται σε emails — όλα έχουν status, υπεύθυνο και ιστορικό.</div>
+
+    <h3>Οι 4 ρόλοι</h3>
+    <table class="plain">
+      <tr><th>Ρόλος</th><th>Ποιος είναι</th><th>Σε μία γραμμή</th></tr>
+      <tr><td><span class="role owner">OWNER</span></td><td>Απλός χρήστης / αιτών (requestor)</td><td>Ανοίγει projects, παρακολουθεί τα δικά του, βλέπει tasks των έργων του.</td></tr>
+      <tr><td><span class="role supervisor">SUPERVISOR</span></td><td>Manager</td><td>Εγκρίνει (υπογράφει) projects που εποπτεύει και tasks που του ανατίθενται για SignOff.</td></tr>
+      <tr><td><span class="role implementor">IMPLEMENTOR</span></td><td>Resource / υλοποιητής</td><td>Εκτελεί tasks: ενημερώνει status, ώρες, ημερομηνίες, σημειώσεις.</td></tr>
+      <tr><td><span class="role admin">ADMIN / COO</span></td><td>Διαχειριστής</td><td>Πλήρης έλεγχος: όλα τα δεδομένα, αναθέσεις, RACI, Overviews, διαγραφές.</td></tr>
+    </table>
+    <p>Ο ρόλος αναγνωρίζεται αυτόματα από το Microsoft 365 login και τις λίστες Resources/Managers. Ο Admin διαθέτει και <b>Role preview</b> στο πλάι για να βλέπει την εφαρμογή «με τα μάτια» κάθε ρόλου.</p>
+
+    <h3>Το μενού πλοήγησης</h3>
+    <ul>
+      <li><b>Welcome</b> — προσωπικό dashboard (όλοι οι ρόλοι).</li>
+      <li><b>Tasks Overview / Projects Overview</b> — εποπτικές οθόνες <span class="role admin">ADMIN</span> μόνο.</li>
+      <li><b>Tasks / Projects</b> — οι λίστες εργασίας (όλοι, με scoping ανά ρόλο).</li>
+      <li><b>Waiting for Signoff</b> — ουρά υπογραφών <span class="role admin">ADMIN</span> + <span class="role supervisor">SUPERVISOR</span>.</li>
+      <li><b>❓ Manual</b> — αυτό το εγχειρίδιο.</li>
+    </ul>
+  </section>
+
+  <!-- ══ 2. ΕΝΝΟΙΕΣ ══ -->
+  <section class="doc-section" id="concepts">
+    <div class="kicker">Ενότητα 2</div>
+    <h2>Βασικές Έννοιες: RACI, Kanban, Gantt</h2>
+    <p class="lead">Τρία καθιερωμένα εργαλεία διοίκησης έργων που χρησιμοποιεί η εφαρμογή. Δύο λεπτά ανάγνωσης αρκούν.</p>
+
+    <h3>RACI — ποιος κάνει τι σε ένα έργο</h3>
+    <p>Το RACI ξεκαθαρίζει τους ρόλους της ομάδας ενός project με 4 γράμματα:</p>
+    <table class="plain">
+      <tr><th>Γράμμα</th><th>Σημαίνει</th><th>Με απλά λόγια</th></tr>
+      <tr><td><b>R</b>esponsible</td><td>Υπεύθυνος υλοποίησης</td><td>Αυτός που «βάζει τα χέρια» και κάνει τη δουλειά.</td></tr>
+      <tr><td><b>A</b>ccountable</td><td>Τελικά υπόλογος</td><td>Έχει τον τελικό λόγο και την ευθύνη του αποτελέσματος — ένας ανά έργο.</td></tr>
+      <tr><td><b>C</b>onsulted</td><td>Συμβουλευόμενος</td><td>Ρωτιέται πριν από αποφάσεις (ειδικοί, stakeholders).</td></tr>
+      <tr><td><b>I</b>nformed</td><td>Ενημερωνόμενος</td><td>Κρατιέται ενήμερος για την πρόοδο, χωρίς εμπλοκή στην εκτέλεση.</td></tr>
+    </table>
+    <div class="benefit">Καμία παρεξήγηση «ποιος το είχε αναλάβει» — οι ρόλοι είναι γραμμένοι πάνω στο έργο.</div>
+    <p>Στο SyncFlow τα RACI πεδία συμπληρώνονται από τη λίστα Resources και τα επεξεργάζεται <b>μόνο ο Admin</b>. Η πλήρης εικόνα φαίνεται στο <a class="xref" data-go="overviews">RACI Matrix</a>.</p>
+
+    <h3>Kanban — η εργασία σε στήλες</h3>
+    <p>Πίνακας με στήλες ανά κατάσταση (Not Started, In Progress, Completed…). Κάθε κάρτα είναι ένα project ή task. Η ροή της δουλειάς φαίνεται με μια ματιά: πού συσσωρεύονται εκκρεμότητες, τι έχει κολλήσει.</p>
+    <div class="flow">
+      <div class="st gray">Not Started</div><div class="ar">→</div>
+      <div class="st">In Progress</div><div class="ar">→</div>
+      <div class="st green">Completed</div>
+    </div>
+    <p class="flowcap">Στα Kanban του SyncFlow σέρνετε την κάρτα από στήλη σε στήλη (drag-n-drop) και το status ενημερώνεται αυτόματα — με αυτόματη εφαρμογή των κανόνων status.</p>
+
+    <h3>Gantt — η εργασία στον χρόνο</h3>
+    <p>Οριζόντιο χρονοδιάγραμμα: κάθε task είναι μια μπάρα από την έναρξη ως το due date. Δείχνει επικαλύψεις, φόρτο ανά περίοδο και καθυστερήσεις σε σχέση με το σήμερα.</p>
+
+    <h3>Dashboard</h3>
+    <p>Συγκεντρωτικοί δείκτες (KPIs): σύνολα, ενεργά, ολοκληρωμένα, εκπρόθεσμα, κατανομές ανά status/owner. Ιδανικό για γρήγορο status reporting.</p>
+  </section>
+
+  <!-- ══ 3. WELCOME ══ -->
+  <section class="doc-section" id="welcome">
+    <div class="kicker">Ενότητα 3</div>
+    <h2>Welcome Screen</h2>
+    <p class="lead">Η πρώτη οθόνη μετά το login — ίδια για όλους τους ρόλους, με περιεχόμενο προσαρμοσμένο στον καθένα.</p>
+
+    <h3>Δομή</h3>
+    <ul>
+      <li><b>Χαιρετισμός &amp; ημερομηνία</b> — «Καλημέρα/Καλησπέρα &lt;όνομα&gt;» ανάλογα με την ώρα.</li>
+      <li><b>Toggle Related / Owned</b> (πάνω δεξιά):
+        <ul>
+          <li><b>Related</b> (προεπιλογή): ό,τι σας αφορά με οποιονδήποτε τρόπο.</li>
+          <li><b>Owned</b>: μόνο tasks <i>ανατεθειμένα σε εσάς</i> και projects όπου είστε <b>R ή A</b>.</li>
+        </ul>
+      </li>
+      <li><b>Section 1 — Θέματα άμεσης προσοχής</b>: tabs <b>My Tasks</b> (Created By ή Assigned to εσάς) και <b>My Projects</b> (Owner, Supervisor ή R/A/C/I), με 3 φίλτρα:
+        <table class="plain">
+          <tr><th>Upcoming</th><td>Deadline μέσα στην τρέχουσα εβδομάδα (Δευ–Κυρ)</td></tr>
+          <tr><th>Overdue</th><td>Μη ολοκληρωμένα με due date πριν από σήμερα</td></tr>
+          <tr><th>Completed</th><td>Ολοκληρωμένα τις τελευταίες 30 ημέρες</td></tr>
+        </table>
+        Κλικ σε task → φόρμα επεξεργασίας · κλικ σε project → προβολή.
+      </li>
+      <li><b>Section 2 — Activity Feeds</b>: «τοίχος» με τα σχόλια όλων των χρηστών σε projects &amp; tasks, από το νεότερο στο παλαιότερο, με δυνατότητα <b>Reply</b>. Κάτω από κάθε σχόλιο, link προς το σχετικό project/task.</li>
+    </ul>
+    <div class="benefit">Ξεκινάτε τη μέρα με μία οθόνη: τι λήγει, τι καθυστερεί, τι συζητιέται — χωρίς ψάξιμο.</div>
+
+    <div class="rolediff">
+      <div class="rd-head">Διαφοροποιήσεις ανά ρόλο</div>
+      <table>
+        <tr><th><span class="role admin">ADMIN</span></th><td>Το Activity Feed δείχνει τα σχόλια <b>όλων</b> των projects &amp; tasks.</td></tr>
+        <tr><th>Λοιποί ρόλοι</th><td>Το Feed φιλτράρεται στα projects όπου είναι Owner / Supervisor / R,A,C,I (και τα tasks αυτών).</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ 4. PROJECTS ══ -->
+  <section class="doc-section" id="projects">
+    <div class="kicker">Ενότητα 4</div>
+    <h2>Projects</h2>
+    <p class="lead">Η λίστα και η φόρμα των έργων — τι βλέπει και τι επεξεργάζεται ο κάθε ρόλος.</p>
+
+    <h3>Λίστα Projects (grid)</h3>
+    <p>Στήλες: #, Τίτλος (με εικονίδιο), Owner, Supervisor, Status, ON_GOING, ημερομηνίες, RACI (συντομογραφίες — τα 2 πρώτα + «+Ν», πλήρης λίστα στο hover). Διαθέτει chips ανά status, αναζήτηση, φίλτρα/ταξινόμηση ανά στήλη και Export Excel (βλ. <a class="xref" data-go="common">Κοινές Λειτουργίες</a>). Γραμμές με deadline στο παρελθόν σημειώνονται κόκκινες.</p>
+
+    <div class="rolediff">
+      <div class="rd-head">Ποια projects βλέπει ο καθένας στη λίστα</div>
+      <table>
+        <tr><th><span class="role admin">ADMIN</span></th><td>Όλα.</td></tr>
+        <tr><th><span class="role owner">OWNER</span></th><td>Μόνο τα δικά του (όπου είναι Owner).</td></tr>
+        <tr><th><span class="role supervisor">SUPERVISOR</span></th><td>Μόνο όσα εποπτεύει.</td></tr>
+        <tr><th><span class="role implementor">IMPLEMENTOR</span></th><td>Μόνο τα projects των tasks του.</td></tr>
+        <tr><th>Όλοι</th><td>Επιπλέον, τα <b>ON_GOING</b> projects είναι ορατά σε όλους ανεξαιρέτως (βλ. <a class="xref" data-go="ongoing">ενότητα 7</a>).</td></tr>
+      </table>
+    </div>
+
+    <h3>Δημιουργία &amp; φόρμα project</h3>
+    <p>Νέο project ανοίγουν ο <span class="role owner">OWNER</span> και ο <span class="role admin">ADMIN</span>. Υποχρεωτικά: <b>Title</b>, <b>Supervisor</b> (επιλέγεται από όλα τα πρόσωπα του SharePoint), <b>Deadline</b>. Με την αποθήκευση ανοίγει αυτόματα email προς τον Supervisor με θέμα «&lt;Τίτλος&gt; Needs your signoff» — το στέλνετε από το δικό σας mailbox.</p>
+    <table class="plain">
+      <tr><th>Πεδίο</th><th>Ποιος το επεξεργάζεται</th></tr>
+      <tr><td>Title, Product, Link, Notes, Proposed start, Deadline, Icon, Supervisor</td><td><span class="role owner">OWNER</span> + <span class="role admin">ADMIN</span></td></tr>
+      <tr><td>Status, Start/End dates, Notes, Icon, Supervisor</td><td><span class="role supervisor">SUPERVISOR</span> + <span class="role admin">ADMIN</span></td></tr>
+      <tr><td>RACI (R/A/C/I)</td><td><b>Μόνο</b> <span class="role admin">ADMIN</span></td></tr>
+      <tr><td>ON_GOING</td><td><b>Μόνο</b> <span class="role admin">ADMIN</span></td></tr>
+    </table>
+    <p>Στη φόρμα υπάρχουν επίσης: Συνημμένα, Σχόλια, ενότητα <b>Υπογραφή</b> (Signed On / Signed By, read-only) και το «Record information» (ίχνη δημιουργίας/τροποποίησης).</p>
+    <div class="warn">Project σε άλλους ρόλους πλην των παραπάνω ανοίγει μόνο για ανάγνωση. Διαγραφή project: μόνο <span class="role admin">ADMIN</span> (τα tasks δεν διαγράφονται, αποσυνδέονται).</div>
+  </section>
+
+  <!-- ══ 5. ΚΥΚΛΟΣ ΖΩΗΣ ══ -->
+  <section class="doc-section" id="projflow">
+    <div class="kicker">Ενότητα 5</div>
+    <h2>Κύκλος Ζωής Project &amp; Υπογραφή</h2>
+    <p class="lead">Κάθε αλλαγή status περνά από κανόνες — ίδιοι είτε γίνεται από τη φόρμα είτε με drag-n-drop στο Kanban.</p>
+
+    <h3>Σχηματική ροή</h3>
+    <div class="flow">
+      <div class="st gray">Νέο project<br>Waiting Manager Approval</div>
+      <div class="ar">→<small>✍ Υπογραφή</small></div>
+      <div class="st">Not Started</div>
+      <div class="ar">→<small>RACI πλήρη</small></div>
+      <div class="st">In Progress</div>
+      <div class="ar">→<small>confirm αν υπάρχουν tasks</small></div>
+      <div class="st green">Completed</div>
+    </div>
+    <div class="flow">
+      <div class="st">In Progress</div>
+      <div class="ar">⇄</div>
+      <div class="st gray">Deferred / Waiting on someone else</div>
+    </div>
+    <p class="flowcap">Οι πλάγιες καταστάσεις (Deferred, Waiting) επιτρέπονται μόνο από/προς In Progress (και μεταξύ τους κατά τους κανόνες).</p>
+
+    <h3>Η υπογραφή (Signoff) του project</h3>
+    <ol>
+      <li>Το νέο project γεννιέται σε <b>Waiting Manager Approval</b> και ο Supervisor ειδοποιείται με email.</li>
+      <li>Ο <span class="role supervisor">SUPERVISOR</span> του έργου (ή ο <span class="role admin">ADMIN</span>) πατά <span class="btn-sample">✍ Υπογραφή</span> στη φόρμα. Τότε αυτόματα: <b>Signed On</b> = τώρα, <b>Signed By</b> = ο υπογράφων, status → <b>Not Started</b>, και προτείνονται defaults: Accountable = το Resource του Supervisor, Consulted = το Resource του Owner (αν είναι κενά).</li>
+      <li>Αν δεν υπάρχει κανένα συνημμένο, εμφανίζεται προειδοποίηση («το έργο δεν περιγράφεται επαρκώς») — με ΟΚ η υπογραφή προχωρά.</li>
+    </ol>
+    <div class="note">Χωρίς υπογραφή, το status δεν μπορεί να τεθεί «Not Started». Υπογεγραμμένο project δεν επιστρέφει ποτέ σε «Waiting Manager Approval».</div>
+
+    <h3>Κανόνες μετάβασης (σύνοψη)</h3>
+    <table class="plain">
+      <tr><th>Νέο status</th><th>Επιτρέπεται μόνο από</th><th>Αυτοματισμοί / έλεγχοι</th></tr>
+      <tr><td>Not Started</td><td>μέσω Υπογραφής</td><td>Signed On/By, RACI defaults</td></tr>
+      <tr><td>In Progress</td><td>Not Started, Deferred, Waiting</td><td>Απαιτεί <b>όλα</b> τα RACI συμπληρωμένα · Start date = σήμερα αν κενό</td></tr>
+      <tr><td>Completed</td><td>In Progress, Deferred, Waiting</td><td>Αν υπάρχουν ανοιχτά tasks → ερώτηση επιβεβαίωσης · End date = σήμερα αν κενό</td></tr>
+      <tr><td>Deferred</td><td>In Progress, Waiting</td><td>—</td></tr>
+      <tr><td>Waiting on someone else</td><td>In Progress, Deferred</td><td>—</td></tr>
+    </table>
+    <p>Σφάλματα και προειδοποιήσεις εμφανίζονται σε παράθυρο με κουμπί <b>OK</b>: σε σφάλμα η αλλαγή δεν γίνεται και επιστρέφετε για διόρθωση· σε προειδοποίηση, με το ΟΚ η ροή συνεχίζει.</p>
+    <div class="benefit">Οι κανόνες εγγυώνται ότι κανένα έργο δεν «τρέχει» χωρίς έγκριση, ομάδα RACI και σωστές ημερομηνίες.</div>
+  </section>
+
+  <!-- ══ 6. TASKS ══ -->
+  <section class="doc-section" id="tasks">
+    <div class="kicker">Ενότητα 6</div>
+    <h2>Tasks</h2>
+    <p class="lead">Οι επιμέρους εργασίες: ποιος τις βλέπει, ποιος τις επεξεργάζεται, και οι κανόνες status.</p>
+
+    <h3>Λίστα Tasks (grid)</h3>
+    <p>Στήλες: # (Task ID), Τίτλος, Project, Tag, Status, Assigned to, Priority, ημερομηνίες, Sign Off, flags. Πλήρη φίλτρα, chips (Open, Overdue, All…), Export Excel.</p>
+    <div class="rolediff">
+      <div class="rd-head">Ποια tasks βλέπει ο καθένας</div>
+      <table>
+        <tr><th><span class="role admin">ADMIN</span></th><td>Όλα, με πλήρη επεξεργασία. Μόνο αυτός δημιουργεί «κανονικά» tasks (εκτός ON_GOING — βλ. ενότητα 7).</td></tr>
+        <tr><th><span class="role owner">OWNER</span></th><td>Τα tasks των δικών του projects — μόνο προβολή.</td></tr>
+        <tr><th><span class="role supervisor">SUPERVISOR</span></th><td>Τα tasks των εποπτευόμενων projects — μόνο προβολή (πλην ροής SignOff).</td></tr>
+        <tr><th><span class="role implementor">IMPLEMENTOR</span></th><td>Τα ανατεθειμένα σε αυτόν· επεξεργάζεται πεδία εκτέλεσης: Status, ημερομηνίες, % Complete, ώρες, Implementor notes, Project, Tag.</td></tr>
+      </table>
+    </div>
+
+    <h3>Κανόνες Status (Task Status Rules)</h3>
+    <table class="plain">
+      <tr><th>Νέο status</th><th>Έλεγχοι &amp; αυτοματισμοί</th></tr>
+      <tr><td>Not Started</td><td>Προεπιλογή για νέο task.</td></tr>
+      <tr><td>In Progress · Deferred · Waiting</td><td>❌ Μπλοκάρεται αν Unassigned · Actual Start = σήμερα αν κενό · ⚠ Warning αν λείπουν Estimated hours ή Due date (η αποθήκευση προχωρά).</td></tr>
+      <tr><td>Completed</td><td>❌ Μπλοκάρεται αν Unassigned · Actual Start &amp; End = σήμερα αν κενά · ⚠ Warning αν λείπουν Estimated ή Billed hours.</td></tr>
+    </table>
+    <p>Οι κανόνες ισχύουν παντού: φόρμα και Kanban drag-n-drop.</p>
+
+    <h3>Διαγραφή task</h3>
+    <table class="plain">
+      <tr><th>Κατάσταση</th><th>Ποιος διαγράφει</th></tr>
+      <tr><td>Πριν το SignOff</td><td>Ο δημιουργός (Created By) ή ο <span class="role admin">ADMIN</span></td></tr>
+      <tr><td>Μετά το SignOff, status = Not Started</td><td>Ο τελευταίος που το τροποποίησε (Modified By) ή ο <span class="role admin">ADMIN</span></td></tr>
+      <tr><td>Το status έχει προχωρήσει</td><td><b>Μόνο</b> ο <span class="role admin">ADMIN</span></td></tr>
+    </table>
+
+    <h3>Χρήσιμα κουμπιά στο task</h3>
+    <ul>
+      <li><span class="btn-sample gray">📅 Add Outlook</span> — δημιουργεί προσυμπληρωμένο Outlook event στη Due Date 17:00 με τίτλο «Deadline: &lt;task&gt; | &lt;project&gt;». Το αποθηκεύετε εσείς.</li>
+      <li><span class="btn-sample gray">✉ Έγκριση Προϊσταμένου</span> — ξανα-ανοίγει το email έγκρισης προς τον Assigned to manager (βλ. ενότητα 7).</li>
+      <li><b>Comments</b> tab &amp; συνημμένα — κοινά με το SharePoint.</li>
+    </ul>
+    <div class="benefit">Το task «κουβαλάει» όλη την ιστορία του: ποιος το ζήτησε, ποιος το ενέκρινε, σχόλια, αρχεία, εκδόσεις.</div>
+  </section>
+
+  <!-- ══ 7. ON_GOING ══ -->
+  <section class="doc-section" id="ongoing">
+    <div class="kicker">Ενότητα 7</div>
+    <h2>ON_GOING Projects &amp; η Μίνι-Εγκριτική Ροή</h2>
+    <p class="lead">Projects-«κουβάδες» για τη συνεχή, καθημερινή δουλειά (π.χ. «Συντήρηση/bug fixing ERP») — δεν κλείνουν ποτέ.</p>
+
+    <h3>Τι είναι</h3>
+    <ul>
+      <li>Πεδίο <b>ON_GOING = TRUE</b> στο project — το ορίζει και το αλλάζει <b>μόνο</b> ο <span class="role admin">ADMIN</span>.</li>
+      <li>Χωρίς πρακτικό deadline: μπαίνει αυτόματα <b>01/01/2999</b>.</li>
+      <li>Ορατά σε <b>όλους</b> τους χρήστες στη λίστα Projects (με badge ON-GOING), αλλά editable μόνο από Admin.</li>
+      <li><b>Εξαιρούνται</b> από τις 3 οθόνες του Projects Overview — δεν «μολύνουν» τα στατιστικά των κανονικών έργων.</li>
+    </ul>
+    <div class="benefit">Τα πολλά μικρά καθημερινά αιτήματα (CRs, bug fixes) αποκτούν στοιχειώδη έγκριση και καταγραφή, χωρίς τη γραφειοκρατία ενός κανονικού project.</div>
+
+    <h3>Η εξαίρεση: όλοι ανοίγουν task σε ON_GOING project</h3>
+    <p>Κατά κανόνα, Owners &amp; Supervisors δεν δημιουργούν tasks. <b>Εξαίρεση</b>: σε ON_GOING projects, task μπορεί να ανοίξει οποιοσδήποτε — και ακολουθεί η μίνι-εγκριτική ροή:</p>
+
+    <div class="flow">
+      <div class="st gray">1. Ο χρήστης ανοίγει task<br>(Title, Due, Notes, Project,<br>Assigned to = manager)</div>
+      <div class="ar">→<small>✉ email «Έγκριση Task #»</small></div>
+      <div class="st">2. Ο Supervisor το ελέγχει,<br>επισυνάπτει οδηγίες,<br>πατά SignOff</div>
+      <div class="ar">→<small>✉ email «Εγκεκριμένο Task #» στον COO</small></div>
+      <div class="st green">3. Ο COO αναθέτει<br>στον implementor —<br>κανονική διαχείριση</div>
+    </div>
+
+    <h3>Βήμα 1 — Απλός χρήστης <span class="role owner">OWNER</span> / <span class="role implementor">IMPLEMENTOR</span></h3>
+    <ul>
+      <li>Ανοιχτά πεδία ΜΟΝΟ: <b>Title, Due Date, Requestor Notes, Project</b> (μόνο ON_GOING projects στη λίστα) και <b>Assigned to</b> — όλα υποχρεωτικά.</li>
+      <li>Το Assigned to δείχνει <b>μόνο managers</b> (Resources με Is_Manager): επιλέγετε ποιος θα εγκρίνει.</li>
+      <li>Με την αποθήκευση ανοίγει email προς τον manager αυτόν, θέμα «Έγκριση Task #N &lt;τίτλος&gt;». Για επανάληψη υπάρχει πάντα το κουμπί <b>Έγκριση Προϊσταμένου</b> στην προβολή του task.</li>
+    </ul>
+
+    <h3>Βήμα 2 — <span class="role supervisor">SUPERVISOR</span> (ή <span class="role admin">ADMIN</span>)</h3>
+    <ul>
+      <li>Επεξεργάζεται Title, Due Date, Requestor Notes, Project και επισυνάπτει έγγραφα-οδηγίες.</li>
+      <li>Δίπλα στο Assigned to υπάρχει κουμπί <span class="btn-sample">SignOff</span> — ενεργό μόνο όσο το SignOff είναι κενό. Με το πάτημα: <b>SignOff = τώρα</b> (καταγράφεται στο Record information &amp; στο grid).</li>
+      <li>Στην αποθήκευση: ⚠ warning αν δεν υπάρχουν συνημμένες οδηγίες (με ΟΚ προχωρά) και ανοίγει email προς τον COO: «Εγκεκριμένο Task #N &lt;τίτλος&gt;».</li>
+      <li>Αν το task το ανοίξει εξαρχής Supervisor, το Βήμα 1 (email έγκρισης) παραλείπεται.</li>
+    </ul>
+    <div class="note">Μετά το SignOff, το task αντιμετωπίζεται όπως όλα τα υπόλοιπα (Kanban, Gantt, status rules, αναθέσεις).</div>
+  </section>
+
+  <!-- ══ 8. WAITING FOR SIGNOFF ══ -->
+  <section class="doc-section" id="signoff">
+    <div class="kicker">Ενότητα 8</div>
+    <h2>Οθόνη Waiting for Signoff</h2>
+    <p class="lead">Η προσωπική ουρά υπογραφών — διαθέσιμη σε <span class="role admin">ADMIN</span> και <span class="role supervisor">SUPERVISOR</span> (τελευταία επιλογή του μενού).</p>
+
+    <h3>Τμήμα 1 — Projects για υπογραφή</h3>
+    <ul>
+      <li>Λίστα των <b>μη υπογεγραμμένων</b> projects (Signed On κενό).</li>
+      <li>Toggle: <b>Waiting Manager Approval</b> (η τρέχουσα ουρά — προεπιλογή) / <b>Όλα τα ανυπόγραφα</b> (και τα παλιά που προχώρησαν χωρίς υπογραφή).</li>
+      <li>Κλικ σε γραμμή → ανοίγει η φόρμα του project σε <b>edit</b>, όπου βρίσκεται το κουμπί ✍ Υπογραφή.</li>
+    </ul>
+    <div class="rolediff">
+      <div class="rd-head">Διαφοροποίηση</div>
+      <table>
+        <tr><th><span class="role admin">ADMIN</span></th><td>Βλέπει όλα τα ανυπόγραφα.</td></tr>
+        <tr><th><span class="role supervisor">SUPERVISOR</span></th><td>Μόνο όσα περιμένουν τη <b>δική του</b> υπογραφή (είναι ο Supervisor τους).</td></tr>
+      </table>
+    </div>
+
+    <h3>Τμήμα 2 — Tasks για υπογραφή</h3>
+    <ul>
+      <li>Tasks με <b>Assigned To = εσάς</b> και <b>SignOff κενό</b> — αυτά που σας έστειλαν για έγκριση.</li>
+      <li>Toggle: <b>ON_GOING projects</b> (προεπιλογή) / <b>Όλα</b>.</li>
+      <li>Κλικ σε γραμμή → προβολή του task· από εκεί Edit για τη ροή SignOff.</li>
+    </ul>
+    <div class="benefit">Μηδέν ξεχασμένες εγκρίσεις: ό,τι περιμένει την υπογραφή σας, σε μία οθόνη.</div>
+  </section>
+
+  <!-- ══ 9. OVERVIEWS ══ -->
+  <section class="doc-section" id="overviews">
+    <div class="kicker">Ενότητα 9</div>
+    <h2>Overviews (Kanban · Dashboard · RACI · Gantt)</h2>
+    <p class="lead">Οι εποπτικές οθόνες του <span class="role admin">ADMIN</span> — συνολική εικόνα έργων και εργασιών. (Οι έννοιες εξηγούνται στην <a class="xref" data-go="concepts">ενότητα 2</a>.)</p>
+
+    <h3>Projects Overview — 3 views με ΚΟΙΝΑ φίλτρα</h3>
+    <ul>
+      <li><b>Kanban</b>: κάρτες ανά status, με <b>drag-n-drop</b> αλλαγή status (εφαρμόζονται οι κανόνες της <a class="xref" data-go="projflow">ενότητας 5</a> — άκυρη μετάβαση = μήνυμα και η κάρτα δεν μετακινείται).</li>
+      <li><b>Dashboard</b>: KPIs (Total/Active/Completed/Overdue) και κατανομές ανά status &amp; owner.</li>
+      <li><b>RACI</b>: πίνακας projects × resources με τα γράμματα R/A/C/I ανά κελί + Export Excel.</li>
+    </ul>
+    <p>Τα φίλτρα (Owner, Approver, Status, <b>Resource</b>, R, A, C, I, Deadline) είναι κοινά και <b>διατηρούνται</b> όταν εναλλάσσεστε μεταξύ των 3 views. Το φίλτρο <b>Resource</b> είναι «έξυπνο»: φέρνει τα projects όπου το επιλεγμένο resource συμμετέχει <i>οπουδήποτε</i> — ως R, A, C, I ή ως πρόσωπο Supervisor/Owner. Κουμπί <b>«Αναίρεση Φίλτρων»</b> καθαρίζει τα πάντα με ένα κλικ.</p>
+    <div class="note">Τα ON_GOING projects εξαιρούνται από τα 3 views.</div>
+
+    <h3>Tasks Overview</h3>
+    <ul>
+      <li><b>Kanban</b>: στήλες ανά status με drag-n-drop (με τους Task Status Rules) και φίλτρα Assignee/Tag/Project/Deadline.</li>
+      <li><b>Gantt</b>: τα tasks στον χρόνο.</li>
+      <li><b>Dashboard</b>: συγκεντρωτικοί δείκτες εργασιών.</li>
+    </ul>
+    <div class="benefit">Ένα σύρσιμο κάρτας = ενημερωμένο status με όλους τους ελέγχους — χωρίς να ανοίξετε καμία φόρμα.</div>
+  </section>
+
+  <!-- ══ 10. ΚΟΙΝΕΣ ΛΕΙΤΟΥΡΓΙΕΣ ══ -->
+  <section class="doc-section" id="common">
+    <div class="kicker">Ενότητα 10</div>
+    <h2>Κοινές Λειτουργίες</h2>
+    <p class="lead">Ό,τι δουλεύει με τον ίδιο τρόπο σε όλες τις οθόνες, για όλους τους ρόλους.</p>
+
+    <h3>Grids (λίστες)</h3>
+    <ul>
+      <li><b>Ταξινόμηση</b>: κλικ στην επικεφαλίδα στήλης.</li>
+      <li><b>Φίλτρα ανά στήλη</b>: βελάκι δίπλα στην επικεφαλίδα — checkbox τιμών, κείμενο ή ημερομηνίες (προκαθορισμένα διαστήματα, από–έως).</li>
+      <li><b>Chips</b> γρήγορου φιλτραρίσματος πάνω από το grid (π.χ. ανά status) και πεδίο <b>Αναζήτηση</b>.</li>
+      <li><b>Σελιδοποίηση</b> (10 γραμμές) και <b>⬇ Export Excel</b> με τα τρέχοντα φιλτραρισμένα δεδομένα.</li>
+      <li>Κόκκινη σήμανση = εκπρόθεσμο. Το grid προσαρμόζει το ύψος του στην οθόνη με σταθερές επικεφαλίδες.</li>
+    </ul>
+
+    <h3>Συνημμένα &amp; Σχόλια</h3>
+    <ul>
+      <li>Σε κάθε project/task: μεταφόρτωση αρχείων και σχόλια με όνομα &amp; ώρα. Διαγράφετε μόνο τα δικά σας σχόλια.</li>
+      <li>Όλα συγχρονίζονται με το SharePoint — ίδια δεδομένα κι από τις δύο πλευρές.</li>
+    </ul>
+
+    <h3>Emails</h3>
+    <p>Η εφαρμογή δεν στέλνει ποτέ email «μόνη της»: ανοίγει προσυμπληρωμένο μήνυμα στο δικό σας Outlook (παραλήπτης/θέμα) και το στέλνετε εσείς — π.χ. signoff project, έγκριση task, Mail-2-Team, Add Outlook (ημερολόγιο).</p>
+
+    <h3>Μηνύματα σφαλμάτων &amp; προειδοποιήσεων</h3>
+    <ul>
+      <li><b>⛔ Σφάλμα</b>: η ενέργεια δεν εκτελείται· με το ΟΚ επιστρέφετε στο σημείο διόρθωσης.</li>
+      <li><b>⚠️ Προειδοποίηση</b>: ενημερωθήκατε· με το ΟΚ η ροή <b>συνεχίζει</b> κανονικά.</li>
+    </ul>
+
+    <h3>Ιστορικό</h3>
+    <p>Στην προβολή του task, το tab <b>History</b> δείχνει όλες τις εκδόσεις και τις αλλαγές status (βάσει SharePoint versioning) — ποιος, τι, πότε.</p>
+  </section>
+
+  <!-- ══ 11. ΓΛΩΣΣΑΡΙ ══ -->
+  <section class="doc-section" id="glossary">
+    <div class="kicker">Ενότητα 11</div>
+    <h2>Γλωσσάρι</h2>
+    <dl class="gloss">
+      <dt>Project</dt><dd>Έργο με Owner, Supervisor, deadline και ομάδα RACI. Ομαδοποιεί tasks.</dd>
+      <dt>Task</dt><dd>Επιμέρους εργασία/αίτημα, συνήθως συνδεδεμένο με project και ανατεθειμένο σε implementor.</dd>
+      <dt>Owner (Requestor)</dt><dd>Ο αιτών/κάτοχος ενός project — το άνοιξε και το παρακολουθεί.</dd>
+      <dt>Supervisor (Manager)</dt><dd>Ο προϊστάμενος που εγκρίνει: υπογράφει projects και κάνει SignOff σε tasks ON_GOING.</dd>
+      <dt>Implementor (Resource)</dt><dd>Ο υλοποιητής που εκτελεί tasks και ενημερώνει την πρόοδό τους.</dd>
+      <dt>Admin / COO</dt><dd>Ο διαχειριστής της εφαρμογής με πλήρη δικαιώματα και τις εποπτικές οθόνες.</dd>
+      <dt>RACI</dt><dd>Responsible, Accountable, Consulted, Informed — οι 4 ρόλοι ομάδας ενός έργου (βλ. <a class="xref" data-go="concepts">ενότητα 2</a>).</dd>
+      <dt>Kanban</dt><dd>Πίνακας με στήλες ανά status· οι κάρτες σέρνονται από στήλη σε στήλη.</dd>
+      <dt>Gantt</dt><dd>Χρονοδιάγραμμα με οριζόντιες μπάρες διάρκειας ανά task.</dd>
+      <dt>Dashboard</dt><dd>Οθόνη συγκεντρωτικών δεικτών (KPIs) και κατανομών.</dd>
+      <dt>Status</dt><dd>Η κατάσταση project/task: Waiting Manager Approval, Not Started, In Progress, Waiting on someone else, Deferred, Completed κ.ά.</dd>
+      <dt>Υπογραφή (Project Signoff)</dt><dd>Η έγκριση project από τον Supervisor: Signed On/By + αυτόματο πέρασμα σε Not Started.</dd>
+      <dt>SignOff (Task)</dt><dd>Ημερομηνία/ώρα έγκρισης ενός task από manager, στη μίνι-εγκριτική ροή των ON_GOING.</dd>
+      <dt>ON_GOING project</dt><dd>Project-«κουβάς» συνεχούς εργασίας, χωρίς πρακτικό deadline (01/01/2999), που δεν κλείνει ποτέ.</dd>
+      <dt>Due Date / Deadline</dt><dd>Η καταληκτική ημερομηνία task / project αντίστοιχα.</dd>
+      <dt>Estimated / Billed hours</dt><dd>Εκτιμώμενες / πραγματικές (χρεωθείσες) ανθρωποώρες ενός task.</dd>
+      <dt>% Complete</dt><dd>Ποσοστό ολοκλήρωσης task (0–100%).</dd>
+      <dt>Tag</dt><dd>Ετικέτα κατηγοριοποίησης task (με χρώμα).</dd>
+      <dt>Activity Feed</dt><dd>Ο «τοίχος» σχολίων της Welcome Screen — όλα τα σχόλια projects &amp; tasks χρονολογικά.</dd>
+      <dt>Overdue</dt><dd>Μη ολοκληρωμένο στοιχείο του οποίου η καταληκτική ημερομηνία έχει περάσει.</dd>
+      <dt>Role preview</dt><dd>Δυνατότητα του Admin να βλέπει την εφαρμογή όπως τη βλέπει κάθε άλλος ρόλος.</dd>
+    </dl>
+  </section>
+
+  </div><!-- /.content -->
+</main>
+
+<!-- ══════════════ NAV DOCK ══════════════ -->
+<div class="navdock">
+  <button id="dockTop" title="Αρχή">⏮</button>
+  <button id="dockPrev" title="Προηγούμενη ενότητα">◀ Προηγούμενο</button>
+  <span class="section-count" id="dockCount">–/–</span>
+  <button id="dockNext" title="Επόμενη ενότητα">Επόμενο ▶</button>
+  <button id="dockEnd" title="Τέλος">⏭</button>
+</div>
+
+<script>
+(function () {
+  var sections = Array.prototype.slice.call(document.querySelectorAll('.doc-section'));
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc-link'));
+  var currentIdx = -1;
+
+  function goTo(id) {
+    var el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('sidebar').classList.remove('open');
+  }
+
+  // TOC + εσωτερικές παραπομπές
+  document.querySelectorAll('[data-go]').forEach(function (a) {
+    a.addEventListener('click', function (e) { e.preventDefault(); goTo(a.getAttribute('data-go')); });
+  });
+
+  // Ενεργή ενότητα (highlight στο TOC + counter στο dock)
+  function setActive(idx) {
+    if (idx === currentIdx) return;
+    currentIdx = idx;
+    links.forEach(function (l, i) { l.classList.toggle('active', i === idx); });
+    document.getElementById('dockCount').textContent = (idx + 1) + '/' + sections.length;
+    document.getElementById('dockPrev').disabled = idx <= 0;
+    document.getElementById('dockNext').disabled = idx >= sections.length - 1;
+  }
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) setActive(sections.indexOf(en.target));
+    });
+  }, { rootMargin: '-25% 0px -60% 0px' });
+  sections.forEach(function (s) { observer.observe(s); });
+
+  // Nav dock
+  document.getElementById('dockTop').onclick = function () { window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  document.getElementById('dockEnd').onclick = function () { goTo(sections[sections.length - 1].id); };
+  document.getElementById('dockPrev').onclick = function () { if (currentIdx > 0) goTo(sections[currentIdx - 1].id); };
+  document.getElementById('dockNext').onclick = function () { if (currentIdx < sections.length - 1) goTo(sections[currentIdx + 1].id); };
+  document.addEventListener('keydown', function (e) {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'ArrowRight') document.getElementById('dockNext').click();
+    if (e.key === 'ArrowLeft') document.getElementById('dockPrev').click();
+  });
+
+  // Progress bar
+  window.addEventListener('scroll', function () {
+    var h = document.documentElement;
+    var p = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+    document.getElementById('progress').style.width = p + '%';
+  }, { passive: true });
+
+  // Mobile menu
+  document.getElementById('menuBtn').onclick = function () {
+    document.getElementById('sidebar').classList.toggle('open');
+  };
+
+  // ── Αναζήτηση: φιλτράρει το TOC + φωτίζει (mark) τα ευρήματα στο κείμενο ─
+  var marked = [];
+  function clearMarks() {
+    marked.forEach(function (m) {
+      var t = document.createTextNode(m.textContent);
+      m.parentNode.replaceChild(t, m);
+      t.parentNode && t.parentNode.normalize();
+    });
+    marked = [];
+  }
+  function markIn(root, q) {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        if (!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+        var p = n.parentNode.nodeName;
+        return (p === 'SCRIPT' || p === 'STYLE' || p === 'MARK') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    var nodes = []; var n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    var ql = q.toLowerCase();
+    nodes.forEach(function (node) {
+      var i = node.nodeValue.toLowerCase().indexOf(ql);
+      if (i < 0) return;
+      var m = document.createElement('mark');
+      var hit = node.splitText(i);
+      hit.splitText(q.length);
+      m.textContent = hit.nodeValue;
+      hit.parentNode.replaceChild(m, hit);
+      marked.push(m);
+    });
+  }
+  var searchTimer = null;
+  document.getElementById('search').addEventListener('input', function () {
+    var q = this.value.trim();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(function () {
+      clearMarks();
+      links.forEach(function (l) {
+        var sec = document.getElementById(l.getAttribute('data-go'));
+        var hay = (l.textContent + ' ' + (sec ? sec.textContent : '')).toLowerCase();
+        l.classList.toggle('hidden', q.length >= 2 && hay.indexOf(q.toLowerCase()) < 0);
+      });
+      if (q.length >= 3) {
+        markIn(document.querySelector('.content'), q);
+        if (marked.length) marked[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 250);
+  });
+
+  // Άνοιγμα από URL hash (π.χ. manual.html#tasks)
+  if (location.hash) setTimeout(function () { goTo(location.hash.slice(1)); }, 100);
+})();
+</script>
+</body>
+</html>

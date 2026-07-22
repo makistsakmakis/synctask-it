@@ -65,9 +65,13 @@ function Shell({ children }) {
             </select>
           </label>
         )}
+        {/* Εταιρικό λογότυπο Inventor */}
+        <img src="/INVENTOR_LOGO_SM_TRANS.png" alt="inventor — We invent. You live." className="side-inventor" />
         <button className="out" onClick={async () => { await signOut(); window.location.assign('/') }}>
           Sign out
         </button>
+        {/* Help: το εγχειρίδιο χρήσης σε ξεχωριστό tab (τέρμα κάτω) */}
+        <a className="help-link" href="/manual.html" target="_blank" rel="noreferrer">❓ Help</a>
       </aside>
       <main className="main">{children}</main>
     </div>
