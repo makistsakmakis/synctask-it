@@ -95,7 +95,7 @@ export default function RequestDetail() {
       <div className="card" style={{ padding: 16 }}>
         {tab === 'General' && (
           <div className="fields">
-            <F k="Requestor" v={`${r.requestor_name ?? ''} (${r.requestor_email ?? ''})`} />
+            <F k="Created By" v={`${r.created_by ?? r.requestor_name ?? ''} (${r.requestor_email ?? ''})`} />
             <F k="Assigned to" v={r.assigned_to ?? '—'} />
             <F k="Project" v={r.project_name ?? '—'} />
             <F k="Tag" v={r.tag_name
