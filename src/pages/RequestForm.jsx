@@ -288,10 +288,19 @@ export default function RequestForm() {
           </label>
           <label className="f">
             <span className="k">Project</span>
-            <select value={form.project_id} onChange={set('project_id')} disabled={!allowed('project_id')}>
-              <option value="">None</option>
-              {visibleProjectOpts.map((p) => <option key={p.id} value={p.id}>{p.title}{p.on_going ? ' (ON-GOING)' : ''}</option>)}
-            </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <select value={form.project_id} onChange={set('project_id')} disabled={!allowed('project_id')} style={{ flex: 1 }}>
+                <option value="">None</option>
+                {visibleProjectOpts.map((p) => <option key={p.id} value={p.id}>{p.title}{p.on_going ? ' (ON-GOING)' : ''}</option>)}
+              </select>
+              {form.project_id && (
+                <a href={`/projects/${form.project_id}`} target="_blank" rel="noopener noreferrer"
+                  title="Άνοιγμα Project σε νέο tab"
+                  style={{ color: 'var(--accent)', fontSize: 16, textDecoration: 'none', flexShrink: 0 }}>
+                  ↗
+                </a>
+              )}
+            </div>
           </label>
           <label className="f">
             <span className="k">Tag</span>

@@ -97,7 +97,12 @@ export default function RequestDetail() {
           <div className="fields">
             <F k="Created By" v={<PersonLink name={r.created_by ?? r.requestor_name ?? ''} email={r.requestor_email} subject={`Σχετικά με Task: #${r.id} | ${r.title}`} />} />
             <F k="Assigned to" v={<PersonLink name={r.assigned_to} email={r.assigned_to_email} subject={`Σχετικά με Task: #${r.id} | ${r.title}`} />} />
-            <F k="Project" v={r.project_name ?? '—'} />
+            <F k="Project" v={r.project_id
+              ? <a href={`/projects/${r.project_id}`} target="_blank" rel="noopener noreferrer"
+                  style={{ color: 'var(--accent)', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}>
+                  {r.project_name ?? `#${r.project_id}`}
+                </a>
+              : '—'} />
             <F k="Tag" v={r.tag_name
               ? <span className="badge" style={{ background: r.tag_color || '#6b7280', color: '#fff' }}>{r.tag_name}</span>
               : '—'} />
