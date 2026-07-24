@@ -42,18 +42,20 @@ const RACI_SEARCH = {
 let _raciColKeysP = null
 function getRaciColKeys() {
   return (_raciColKeysP ??= getListColumns(LISTS.projects).then((cols) => {
-    const result = { ...RACI_COLS_DEFAULT }
+    const colNames = new Set(cols.map((c) => (c.name ?? '').toLowerCase()))
+    const result = {}
     for (const [key, terms] of Object.entries(RACI_SEARCH)) {
       const hit = cols.find((c) => {
         const dn = (c.displayName ?? '').toLowerCase()
         const cn = (c.name ?? '').toLowerCase()
         return terms.some((t) => dn.includes(t) || cn.includes(t))
       })
-      if (hit) result[key] = hit.name  // base name only; 'LookupId' appended on write
+      // Only include if actually found — don't fall back to defaults that may not exist
+      if (hit) result[key] = hit.name
     }
     console.log('[RACI cols detected]', result)
     return result
-  }).catch(() => ({ ...RACI_COLS_DEFAULT })))
+  }).catch(() => ({})))
 }
 
 // Build id→{name, abbr} map from the Resources list for RACI resolution
