@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fetchRequest, fetchHistory, removeRequest } from '../lib/api'
-import { StatusBadge, Flags, CommentsPanel, ConfirmDialog } from '../components/ui'
+import { StatusBadge, Flags, CommentsPanel, ConfirmDialog, PersonLink } from '../components/ui'
 import { fmtDate, fmtDateTime, outlookDeadlineUrl } from '../lib/meta'
 import { LISTS } from '../lib/sp'
 
@@ -95,8 +95,8 @@ export default function RequestDetail() {
       <div className="card" style={{ padding: 16 }}>
         {tab === 'General' && (
           <div className="fields">
-            <F k="Created By" v={`${r.created_by ?? r.requestor_name ?? ''} (${r.requestor_email ?? ''})`} />
-            <F k="Assigned to" v={r.assigned_to ?? '—'} />
+            <F k="Created By" v={<PersonLink name={r.created_by ?? r.requestor_name ?? ''} email={r.requestor_email} subject={`Σχετικά με ${r.title}`} />} />
+            <F k="Assigned to" v={<PersonLink name={r.assigned_to} email={r.assigned_to_email} subject={`Σχετικά με ${r.title}`} />} />
             <F k="Project" v={r.project_name ?? '—'} />
             <F k="Tag" v={r.tag_name
               ? <span className="badge" style={{ background: r.tag_color || '#6b7280', color: '#fff' }}>{r.tag_name}</span>

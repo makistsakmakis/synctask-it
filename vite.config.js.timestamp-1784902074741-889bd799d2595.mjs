@@ -1,0 +1,11 @@
+import "node:module";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+var vite_config_default = defineConfig({
+	plugins: [react()],
+	build: { assetsInlineLimit: 0 }
+});
+//#endregion
+export { vite_config_default as default };
+
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidml0ZS5jb25maWcuanMiLCJuYW1lcyI6W10sInNvdXJjZXMiOlsiL3Nlc3Npb25zL2Vsb3F1ZW50LWdpZnRlZC1tY2NhcnRoeS9tbnQvc3luY3Rhc2svdml0ZS5jb25maWcuanMiXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IHsgZGVmaW5lQ29uZmlnIH0gZnJvbSAndml0ZSdcclxuaW1wb3J0IHJlYWN0IGZyb20gJ0B2aXRlanMvcGx1Z2luLXJlYWN0J1xyXG5leHBvcnQgZGVmYXVsdCBkZWZpbmVDb25maWcoeyBwbHVnaW5zOiBbcmVhY3QoKV0sIGJ1aWxkOiB7IGFzc2V0c0lubGluZUxpbWl0OiAwIH0gfSlcclxuIl0sIm1hcHBpbmdzIjoiOzs7QUFFQSxJQUFBLHNCQUFlLGFBQWE7Q0FBRSxTQUFTLENBQUMsTUFBTSxDQUFDO0NBQUcsT0FBTyxFQUFFLG1CQUFtQixFQUFFO0FBQUUsQ0FBQyJ9

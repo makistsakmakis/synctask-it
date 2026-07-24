@@ -616,6 +616,35 @@ export function RequestGrid({ rows, columns, filters, defaultFilter = 'Open', em
   )
 }
 
+// ── PersonLink — clickable person name that opens a mailto ──────────────────
+export function PersonLink({ name, email, subject }) {
+  if (!name && !email) return <span>—</span>
+  const display = name || email
+  if (!email) return <span>{display}</span>
+  const href = `mailto:${email}?subject=${encodeURIComponent(subject ?? '')}`
+  return (
+    <a href={href} title={`Mail To: ${name || email}`}
+      style={{ color: 'var(--accent)', textDecoration: 'underline dotted', textUnderlineOffset: 2, cursor: 'pointer' }}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = href }}>
+      {display}
+    </a>
+  )
+}
+
+// ── MailBtn — small mail icon to show next to a <select> ────────────────────
+export function MailBtn({ email, name, subject }) {
+  if (!email) return null
+  const href = `mailto:${email}?subject=${encodeURIComponent(subject ?? '')}`
+  return (
+    <a href={href} title={`Mail To: ${name || email}`}
+      style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--accent)', fontSize: 15,
+        textDecoration: 'none', flexShrink: 0 }}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = href }}>
+      ✉
+    </a>
+  )
+}
+
 export function ConfirmDialog({ title, body, onYes, onNo, busy }) {
   return (
     <div className="overlay" onClick={onNo}>
@@ -633,7 +662,7 @@ export function ConfirmDialog({ title, body, onYes, onNo, busy }) {
 
 // Multi-select person picker for RACI fields.
 // options: [{ id, name }], value: string[] of IDs
-export function MultiPersonSelect({ options, value, onChange, disabled, tooltipMap }) {
+export function MultiPersonSelect({ options, value, onChange, disabled, tooltipMap, emailMap, subject }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -647,17 +676,36 @@ export function MultiPersonSelect({ options, value, onChange, disabled, tooltipM
   const toggle = (id) => onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id])
   const selected = options.filter((o) => value.includes(o.id))
 
-  // Build label — if tooltipMap provided, wrap each name in a span with title
+  const buildChip = (o, sep) => {
+    const tip = tooltipMap?.get(o.id) || ''
+    const email = emailMap?.get(o.id) || ''
+    const tooltipName = tip || o.name
+    if (email) {
+      const href = `mailto:${email}?subject=${encodeURIComponent(subject ?? '')}`
+      return (
+        <span key={o.id}>
+          <a href={href} title={`Mail To: ${tooltipName}`}
+            style={{ color: 'var(--accent)', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = href }}>
+            {o.name}
+          </a>{sep}
+        </span>
+      )
+    }
+    return (
+      <span key={o.id} title={tip || undefined}
+        style={tip ? { cursor: 'help', textDecoration: 'underline dotted', textUnderlineOffset: 3 } : {}}>
+        {o.name}{sep}
+      </span>
+    )
+  }
+
+  // Build label — if tooltipMap or emailMap provided, render per-chip nodes
   const labelNode = selected.length === 0
     ? <span style={{ color: 'var(--ink-soft)' }}>Επιλογή…</span>
-    : tooltipMap
+    : (tooltipMap || emailMap)
       ? <span style={{ color: 'var(--ink)' }}>
-          {selected.slice(0, 3).map((o, i) => (
-            <span key={o.id} title={tooltipMap.get(o.id) || ''}
-              style={{ cursor: tooltipMap.get(o.id) ? 'help' : 'default' }}>
-              {o.name}{i < Math.min(selected.length, 3) - 1 ? ', ' : ''}
-            </span>
-          ))}
+          {selected.slice(0, 3).map((o, i) => buildChip(o, i < Math.min(selected.length, 3) - 1 ? ', ' : ''))}
           {selected.length > 3 ? ` +${selected.length - 3}` : ''}
         </span>
       : <span style={{ color: 'var(--ink)' }}>

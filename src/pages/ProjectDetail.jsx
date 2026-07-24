@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchProject, fetchProjectTasks, removeProject } from '../lib/projects'
 import { fetchResources } from '../lib/api'
-import { RequestGrid, StatusBadge, Flags, ConfirmDialog, CommentsPanel } from '../components/ui'
+import { RequestGrid, StatusBadge, Flags, ConfirmDialog, CommentsPanel, PersonLink } from '../components/ui'
 import { fmtDate, sanitizeHtml } from '../lib/meta'
 import { LISTS } from '../lib/sp'
 import { useSession } from '../App'
@@ -95,8 +95,8 @@ export default function ProjectDetail() {
       <div className="card" style={{ padding: 18, marginBottom: 18 }}>
         <div className="fields">
           <F k="Project No" v={`#${p.id}`} mono />
-          <F k="Owner" v={p.owner} />
-          <F k="Supervisor" v={p.supervisor} />
+          <F k="Owner" v={<PersonLink name={p.owner} email={p.owner_email} subject={`Σχετικά με ${p.title}`} />} />
+          <F k="Supervisor" v={<PersonLink name={p.supervisor} email={p.supervisor_email} subject={`Σχετικά με ${p.title}`} />} />
           <F k="Status" v={p.status} />
           <F k="ON_GOING" v={p.on_going ? '✓ Ναι' : '—'} />
           <F k="Product" v={p.product} />
@@ -109,18 +109,22 @@ export default function ProjectDetail() {
 
         {/* RACI */}
         {(() => {
-          // Map from resource ID → real person name (for hover tooltip)
+          // Map from resource ID → person name and email (for hover tooltip + mail link)
           const personMap = new Map(resources.map((r) => [r.id, r.personName || r.email || '']))
+          const emailMap  = new Map(resources.map((r) => [r.id, r.email || '']))
           const RaciVal = ({ ids, names }) => {
             if (!names?.length) return <span>—</span>
             return (
               <span>
                 {names.map((name, i) => {
-                  const tip = personMap.get(String(ids?.[i] ?? '')) || ''
+                  const rid = String(ids?.[i] ?? '')
+                  const email = emailMap.get(rid) || ''
+                  const personName = personMap.get(rid) || name
                   return (
-                    <span key={i} title={tip || undefined}
-                      style={tip ? { cursor: 'help', textDecoration: 'underline dotted', textUnderlineOffset: 3 } : {}}>
-                      {name}{i < names.length - 1 ? ', ' : ''}
+                    <span key={i}>
+                      <PersonLink name={name} email={email} subject={`Σχετικά με ${p.title}`}
+                        title={email ? `Mail To: ${personName}` : undefined} />
+                      {i < names.length - 1 ? ', ' : ''}
                     </span>
                   )
                 })}

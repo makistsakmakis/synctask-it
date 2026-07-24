@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime, sanitizeHtml } from '../lib/meta'
-import { DateInput, RichTextEditor, MultiPersonSelect, AttachmentsPanel, CommentsPanel, NoticeDialog } from '../components/ui'
+import { DateInput, RichTextEditor, MultiPersonSelect, AttachmentsPanel, CommentsPanel, NoticeDialog, MailBtn } from '../components/ui'
 import { LISTS, getAttachments } from '../lib/sp'
 import { fetchProject, createProject, updateProject, fetchProjectStatuses, signProject } from '../lib/projects'
 import { fetchUserOptions, fetchResourceOptions, fetchResources, fetchPendingTaskCount } from '../lib/api'
@@ -335,19 +335,25 @@ export default function ProjectForm() {
           </div>
           <label className="f">
             <span className="k">Owner {effectiveRole === 'admin' && <em>*</em>}</span>
-            <select value={form.owner_id} onChange={set('owner_id')}
-              disabled={!allowed('owner_id')}>
-              <option value="">Select…</option>
-              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <select value={form.owner_id} onChange={set('owner_id')}
+                disabled={!allowed('owner_id')} style={{ flex: 1 }}>
+                <option value="">Select…</option>
+                {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+              {(() => { const u = users.find((u) => u.id === form.owner_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με ${form.title}`} /> : null })()}
+            </div>
           </label>
           <label className="f">
             <span className="k">Supervisor <em>*</em></span>
-            <select value={form.supervisor_id} onChange={set('supervisor_id')}
-              disabled={!allowed('supervisor_id')}>
-              <option value="">Select supervisor…</option>
-              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <select value={form.supervisor_id} onChange={set('supervisor_id')}
+                disabled={!allowed('supervisor_id')} style={{ flex: 1 }}>
+                <option value="">Select supervisor…</option>
+                {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+              {(() => { const u = users.find((u) => u.id === form.supervisor_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με ${form.title}`} /> : null })()}
+            </div>
           </label>
           <label className="f" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
             title="Project-κουβάς για on-going εργασίες (συντήρηση κλπ) — χωρίς πρακτικό deadline, δεν κλείνει ποτέ. Μόνο ο Admin το αλλάζει.">
@@ -424,6 +430,7 @@ export default function ProjectForm() {
           <div className="form">
             {(() => {
               const raciTooltipMap = new Map(resources.map((r) => [r.id, r.personName || r.email || '']))
+              const raciEmailMap   = new Map(resources.map((r) => [r.id, r.email || '']))
               return RACI_DEFS.map(({ key, label, tooltip }) => (
                 <div key={key} className="f">
                   <span className="k" title={tooltip} style={{ cursor: 'help', textDecorationLine: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>
@@ -435,6 +442,8 @@ export default function ProjectForm() {
                     onChange={(v) => setForm((f) => ({ ...f, [key]: v }))}
                     disabled={!allowed(key)}
                     tooltipMap={raciTooltipMap}
+                    emailMap={raciEmailMap}
+                    subject={`Σχετικά με ${form.title}`}
                   />
                 </div>
               ))

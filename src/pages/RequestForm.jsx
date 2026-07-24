@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useSession } from '../App'
 import { fmtDateTime, sanitizeHtml, outlookDeadlineUrl } from '../lib/meta'
-import { DateInput, RichTextEditor, AttachmentsPanel, CommentsPanel, NoticeDialog } from '../components/ui'
+import { DateInput, RichTextEditor, AttachmentsPanel, CommentsPanel, NoticeDialog, MailBtn } from '../components/ui'
 import { LISTS, getAttachments } from '../lib/sp'
 import {
   fetchRequest, createRequest, updateRequest,
@@ -272,10 +272,13 @@ export default function RequestForm() {
                 </button>
               )}
             </span>
-            <select value={form.assigned_to_id} onChange={set('assigned_to_id')} disabled={!allowed('assigned_to_id')}>
-              <option value="">Unassigned</option>
-              {assigneeOpts.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <select value={form.assigned_to_id} onChange={set('assigned_to_id')} disabled={!allowed('assigned_to_id')} style={{ flex: 1 }}>
+                <option value="">Unassigned</option>
+                {assigneeOpts.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+              {(() => { const u = assigneeOpts.find((u) => u.id === form.assigned_to_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με ${form.title}`} /> : null })()}
+            </div>
           </label>
           <label className="f">
             <span className="k">Status</span>
