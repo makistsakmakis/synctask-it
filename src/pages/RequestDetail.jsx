@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fetchRequest, fetchHistory, removeRequest } from '../lib/api'
 import { StatusBadge, Flags, CommentsPanel, ConfirmDialog, PersonLink, MsgDropPanel } from '../components/ui'
+import { TaskGauges } from '../components/Gauge'
 import { fmtDate, fmtDateTime, outlookDeadlineUrl } from '../lib/meta'
 import { LISTS } from '../lib/sp'
 
@@ -161,6 +162,8 @@ export default function RequestDetail() {
           </div>
         )}
       </div>
+
+      {tab === 'General' && <TaskGauges r={r} />}
 
       {confirm && (
         <ConfirmDialog title="Delete task" busy={busy}
