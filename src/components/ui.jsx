@@ -929,7 +929,8 @@ export function ProjectsKanban({ rows, onDrop, allStatuses = [] }) {
 }
 
 // ── Συνημμένα list item (SharePoint REST — το Graph δεν εκθέτει attachments) ──
-const isMsgFile = (name) => name.toLowerCase().endsWith('.msg')
+// .msg (classic Outlook) ή .eml (νέο Outlook / άλλα mail clients)
+const isMsgFile = (name) => /\.(msg|eml)$/i.test(name)
 
 // exclude: array of lowercase extensions to hide, e.g. ['.msg']
 export function AttachmentsPanel({ listName, itemId, canEdit = true, exclude = [] }) {
@@ -1022,10 +1023,10 @@ export function MsgDropPanel({ listName, itemId, canEdit = true }) {
   const onDrop = async (e) => {
     e.preventDefault(); setDragging(false); setErr('')
     const msgFiles = [...(e.dataTransfer.files ?? [])].filter(
-      (f) => isMsgFile(f.name) || f.type === 'application/vnd.ms-outlook'
+      (f) => isMsgFile(f.name) || f.type === 'application/vnd.ms-outlook' || f.type === 'message/rfc822'
     )
     if (!msgFiles.length) {
-      setErr('Δεν βρέθηκε αρχείο .msg. Σύρτε email από το Outlook.')
+      setErr('Δεν βρέθηκε αρχείο .msg/.eml. Σύρτε email από το Outlook.')
       return
     }
     for (const f of msgFiles) await uploadOne(f)
@@ -1074,10 +1075,10 @@ export function MsgDropPanel({ listName, itemId, canEdit = true }) {
             ή{' '}
             <span style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }}
               onClick={() => fileRef.current?.click()}>
-              επιλέξτε .msg αρχείο
+              επιλέξτε .msg/.eml αρχείο
             </span>
           </div>
-          <input ref={fileRef} type="file" accept=".msg" style={{ display: 'none' }} onChange={onFilePick} />
+          <input ref={fileRef} type="file" accept=".msg,.eml" style={{ display: 'none' }} onChange={onFilePick} />
         </div>
       )}
 
