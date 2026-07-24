@@ -75,7 +75,9 @@ export function Gauge({ title, subtitle, value, num, label, detail, noData }) {
     <div className="gauge-card card">
       <div className="gauge-title">{title}</div>
       <div className="gauge-sub">{subtitle}</div>
-      <svg viewBox="0 0 300 178" className="gauge-svg" role="img" aria-label={`${title}: ${noData ?? label}`}>
+      <div className="gauge-wrap">
+      {noData && <div className="gauge-ribbon">ΕΚΤΟΣ ΔΕΔΟΜΕΝΩΝ</div>}
+      <svg viewBox="0 0 300 178" className={'gauge-svg' + (noData ? ' nodata' : '')} role="img" aria-label={`${title}: ${noData ?? label}`}>
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#dc2626" />
@@ -112,10 +114,11 @@ export function Gauge({ title, subtitle, value, num, label, detail, noData }) {
         <circle cx={CX} cy={CY} r="11" fill="var(--ink)" />
         <circle cx={CX} cy={CY} r="4.5" fill={color} />
       </svg>
+      </div>
 
       {noData ? (
         <>
-          <div className="gauge-big" style={{ color: 'var(--ink-soft)' }}>Χωρίς δεδομένα</div>
+          <div className="gauge-big" style={{ visibility: 'hidden' }}>—</div>
           <div className="gauge-detail">{noData}</div>
         </>
       ) : (
