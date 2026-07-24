@@ -437,12 +437,12 @@ input:disabled, select:disabled, textarea:disabled { background: #f3f4f1; color:
 .gantt-bar { position: absolute; top: 7px; height: 16px; border-radius: 5px; min-width: 6px; opacity: .92; }
 
 /* ── Task performance gauges (RequestDetail) ── */
-.gauges-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
-.gauge-card { padding: 18px 16px 16px; text-align: center; }
-.gauge-title { font-family: var(--font-display); font-weight: 600; font-size: 16px; }
-.gauge-sub { color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
-.gauge-svg { width: 100%; max-width: 340px; margin: 6px auto 0; display: block; }
+.gauges-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+.gauge-card { padding: 10px 14px 10px; text-align: center; }
+.gauge-title { font-family: var(--font-display); font-weight: 600; font-size: 14px; }
+.gauge-sub { color: var(--ink-soft); font-size: 11px; margin-top: 1px; }
+.gauge-svg { width: 100%; max-width: 210px; margin: 2px auto 0; display: block; }
 .gauge-end { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: .5px; }
-.gauge-big { font-family: var(--font-display); font-weight: 700; font-size: 20px; margin-top: 2px; }
-.gauge-detail { color: var(--ink-soft); font-size: 12px; margin-top: 4px; }
+.gauge-big { font-family: var(--font-display); font-weight: 700; font-size: 16px; margin-top: 0; }
+.gauge-detail { color: var(--ink-soft); font-size: 11px; margin-top: 2px; }
 @media (max-width: 860px) { .gauges-row { grid-template-columns: 1fr; } }

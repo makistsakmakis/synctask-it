@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
    2. Ώρες εργασίας — % ολοκλήρωσης vs % καταναλωμένων ωρών
       (actual/estimated man-hours).
    Η βελόνα δείχνει την απόκλιση σε ποσοστιαίες μονάδες:
-   0 (αριστερά, πράσινο) = εντός/μπροστά · 100 (δεξιά, κόκκινο).
+   αριστερά (κόκκινο) = εκτός/πίσω · δεξιά (πράσινο) = εντός/μπροστά.
    ───────────────────────────────────────────────────────────── */
 
 const clamp = (v, a, b) => Math.min(Math.max(v, a), b)
@@ -53,7 +53,7 @@ function polar(v, r) {
 
 export function Gauge({ title, subtitle, value, num, label, detail, noData }) {
   const target = noData ? 0 : clamp(value, 0, 100)
-  const [v, setV] = useState(0)
+  const [v, setV] = useState(100)
   useEffect(() => {
     const t = setTimeout(() => setV(target), 80)
     return () => clearTimeout(t)
@@ -78,9 +78,9 @@ export function Gauge({ title, subtitle, value, num, label, detail, noData }) {
       <svg viewBox="0 0 300 178" className="gauge-svg" role="img" aria-label={`${title}: ${noData ?? label}`}>
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#15803d" />
+            <stop offset="0%" stopColor="#dc2626" />
             <stop offset="50%" stopColor="#eab308" />
-            <stop offset="100%" stopColor="#dc2626" />
+            <stop offset="100%" stopColor="#15803d" />
           </linearGradient>
           <filter id={gid + '-glow'} x="-40%" y="-40%" width="180%" height="180%">
             <feGaussianBlur stdDeviation="4" result="b" />
@@ -97,12 +97,12 @@ export function Gauge({ title, subtitle, value, num, label, detail, noData }) {
         {ticks}
 
         {/* άκρα κλίμακας */}
-        <text x={CX - R} y={CY + 16} textAnchor="middle" className="gauge-end" fill="#15803d">ΕΝΤΟΣ</text>
-        <text x={CX + R} y={CY + 16} textAnchor="middle" className="gauge-end" fill="#dc2626">ΕΚΤΟΣ</text>
+        <text x={CX - R} y={CY + 16} textAnchor="middle" className="gauge-end" fill="#dc2626">ΕΚΤΟΣ</text>
+        <text x={CX + R} y={CY + 16} textAnchor="middle" className="gauge-end" fill="#15803d">ΕΝΤΟΣ</text>
 
         {/* βελόνα */}
         <g style={{
-          transform: `rotate(${-90 + v * 1.8}deg)`,
+          transform: `rotate(${-90 + (100 - v) * 1.8}deg)`,
           transformOrigin: `${CX}px ${CY}px`,
           transition: 'transform 1.5s cubic-bezier(.22,1.35,.4,1)',
         }} filter={noData ? undefined : `url(#${gid}-glow)`}>
