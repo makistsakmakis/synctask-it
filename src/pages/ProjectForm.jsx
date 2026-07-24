@@ -341,7 +341,7 @@ export default function ProjectForm() {
                 <option value="">Select…</option>
                 {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
-              {(() => { const u = users.find((u) => u.id === form.owner_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με ${form.title}`} /> : null })()}
+              {(() => { const u = users.find((u) => u.id === form.owner_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με Project: #${id || 'NEW'} | ${form.title}`} /> : null })()}
             </div>
           </label>
           <label className="f">
@@ -352,7 +352,7 @@ export default function ProjectForm() {
                 <option value="">Select supervisor…</option>
                 {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
-              {(() => { const u = users.find((u) => u.id === form.supervisor_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με ${form.title}`} /> : null })()}
+              {(() => { const u = users.find((u) => u.id === form.supervisor_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με Project: #${id || 'NEW'} | ${form.title}`} /> : null })()}
             </div>
           </label>
           <label className="f" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
@@ -443,7 +443,7 @@ export default function ProjectForm() {
                     disabled={!allowed(key)}
                     tooltipMap={raciTooltipMap}
                     emailMap={raciEmailMap}
-                    subject={`Σχετικά με ${form.title}`}
+                    subject={`Σχετικά με Project: #${id || 'NEW'} | ${form.title}`}
                   />
                 </div>
               ))

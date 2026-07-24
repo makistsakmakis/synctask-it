@@ -277,7 +277,7 @@ export default function RequestForm() {
                 <option value="">Unassigned</option>
                 {assigneeOpts.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
-              {(() => { const u = assigneeOpts.find((u) => u.id === form.assigned_to_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με ${form.title}`} /> : null })()}
+              {(() => { const u = assigneeOpts.find((u) => u.id === form.assigned_to_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με Task: #${id || 'NEW'} | ${form.title}`} /> : null })()}
             </div>
           </label>
           <label className="f">
