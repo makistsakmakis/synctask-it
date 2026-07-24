@@ -908,14 +908,22 @@ export function ProjectsKanban({ rows, onDrop, allStatuses = [] }) {
 }
 
 // ── Συνημμένα list item (SharePoint REST — το Graph δεν εκθέτει attachments) ──
-export function AttachmentsPanel({ listName, itemId, canEdit = true }) {
+const isMsgFile = (name) => name.toLowerCase().endsWith('.msg')
+
+// exclude: array of lowercase extensions to hide, e.g. ['.msg']
+export function AttachmentsPanel({ listName, itemId, canEdit = true, exclude = [] }) {
   const [files, setFiles] = useState(null)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const fileRef = useRef(null)
 
   const load = () => getAttachments(listName, itemId)
-    .then((f) => { setFiles(f); setErr('') })
+    .then((f) => {
+      const visible = exclude.length
+        ? f.filter((x) => !exclude.some((ext) => x.name.toLowerCase().endsWith(ext)))
+        : f
+      setFiles(visible); setErr('')
+    })
     .catch((e) => { setFiles([]); setErr(e.message ?? 'Αποτυχία φόρτωσης συνημμένων.') })
 
   useEffect(() => { if (itemId) load() }, [itemId])
@@ -963,6 +971,121 @@ export function AttachmentsPanel({ listName, itemId, canEdit = true }) {
           </button>
         </>
       )}
+    </div>
+  )
+}
+
+// ── MsgDropPanel — Drag & Drop Outlook emails (MSG) ───────────────────────────
+// Drag an email directly from Outlook onto the drop zone → uploaded as .msg attachment.
+// Only .msg files are shown here; all other attachments stay in AttachmentsPanel.
+export function MsgDropPanel({ listName, itemId, canEdit = true }) {
+  const [files, setFiles] = useState(null)
+  const [dragging, setDragging] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const fileRef = useRef(null)
+
+  const load = () => getAttachments(listName, itemId)
+    .then((all) => { setFiles(all.filter((f) => isMsgFile(f.name))); setErr('') })
+    .catch((e) => { setFiles([]); setErr(e.message ?? 'Αποτυχία φόρτωσης.') })
+
+  useEffect(() => { if (itemId) load() }, [itemId])
+
+  const uploadOne = async (file) => {
+    setBusy(true)
+    try { await addAttachment(listName, itemId, file) }
+    catch (e) { setErr(e.message ?? 'Αποτυχία μεταφόρτωσης.') }
+    setBusy(false)
+  }
+
+  const onDrop = async (e) => {
+    e.preventDefault(); setDragging(false); setErr('')
+    const msgFiles = [...(e.dataTransfer.files ?? [])].filter(
+      (f) => isMsgFile(f.name) || f.type === 'application/vnd.ms-outlook'
+    )
+    if (!msgFiles.length) {
+      setErr('Δεν βρέθηκε αρχείο .msg. Σύρτε email από το Outlook.')
+      return
+    }
+    for (const f of msgFiles) await uploadOne(f)
+    await load()
+  }
+
+  const onFilePick = async (e) => {
+    const f = e.target.files?.[0]
+    if (f) { await uploadOne(f); await load() }
+    e.target.value = ''
+  }
+
+  const del = async (name) => {
+    setBusy(true); setErr('')
+    try { await deleteAttachment(listName, itemId, name); await load() }
+    catch (e) { setErr(e.message ?? 'Αποτυχία διαγραφής.') }
+    setBusy(false)
+  }
+
+  const zone = {
+    border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--line)'}`,
+    borderRadius: 8,
+    padding: '20px 12px',
+    textAlign: 'center',
+    background: dragging ? 'color-mix(in srgb, var(--accent) 6%, transparent)' : 'var(--surface-alt, transparent)',
+    transition: 'all 0.15s',
+    marginBottom: 14,
+  }
+
+  return (
+    <div className="attachbox">
+      <h3 style={{ marginBottom: 12 }}>Emails ({files?.length ?? '…'})</h3>
+      {err && <div className="err" style={{ marginBottom: 8 }}>{err}</div>}
+
+      {canEdit && (
+        <div style={zone}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+          onDragEnter={(e) => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}>
+          <div style={{ fontSize: 32, marginBottom: 6 }}>📧</div>
+          <div style={{ fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>
+            {dragging ? 'Αφήστε το email…' : 'Σύρτε email από το Outlook εδώ'}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
+            ή{' '}
+            <span style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }}
+              onClick={() => fileRef.current?.click()}>
+              επιλέξτε .msg αρχείο
+            </span>
+          </div>
+          <input ref={fileRef} type="file" accept=".msg" style={{ display: 'none' }} onChange={onFilePick} />
+        </div>
+      )}
+
+      {busy && <div style={{ color: 'var(--ink-soft)', fontSize: 13, marginBottom: 8 }}>Μεταφόρτωση…</div>}
+
+      {files == null
+        ? <div style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Φόρτωση…</div>
+        : files.length === 0
+          ? <div style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Δεν υπάρχουν αποθηκευμένα emails.</div>
+          : (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {files.map((f) => (
+                <li key={f.name} style={{ display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>📧</span>
+                  <a href={f.url} target="_blank" rel="noreferrer"
+                    style={{ flex: 1, color: 'var(--ink)', fontSize: 13, wordBreak: 'break-word' }}
+                    title="Άνοιγμα — απαιτεί εγκατεστημένο Outlook">
+                    {f.name.replace(/\.msg$/i, '')}
+                  </a>
+                  {canEdit && (
+                    <button type="button" className="del" title="Διαγραφή" disabled={busy}
+                      onClick={() => del(f.name)}>✕</button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )
+      }
     </div>
   )
 }

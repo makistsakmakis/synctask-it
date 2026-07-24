@@ -452,7 +452,7 @@ export default function ProjectForm() {
           </div>
         </div>
 
-        {editing && <AttachmentsPanel listName={LISTS.projects} itemId={id} canEdit={!isReadOnly} />}
+        {editing && <AttachmentsPanel listName={LISTS.projects} itemId={id} canEdit={!isReadOnly} exclude={['.msg']} />}
         {editing && <CommentsPanel listName={LISTS.projects} itemId={id} currentEmail={profile.email} />}
 
         {/* ── Υπογραφή (Signed On / Signed By — read-only) ─ */}

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchProject, fetchProjectTasks, removeProject } from '../lib/projects'
 import { fetchResources } from '../lib/api'
-import { RequestGrid, StatusBadge, Flags, ConfirmDialog, CommentsPanel, PersonLink } from '../components/ui'
+import { RequestGrid, StatusBadge, Flags, ConfirmDialog, CommentsPanel, PersonLink, MsgDropPanel } from '../components/ui'
 import { fmtDate, sanitizeHtml } from '../lib/meta'
 import { LISTS } from '../lib/sp'
 import { useSession } from '../App'
@@ -26,6 +26,7 @@ export default function ProjectDetail() {
   const [confirm, setConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [resources, setResources] = useState([])
+  const [tab, setTab] = useState('General')
 
   useEffect(() => {
     fetchProject(id).then(setP).catch(() => nav('/projects'))
@@ -93,65 +94,83 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      <div className="card" style={{ padding: 18, marginBottom: 18 }}>
-        <div className="fields">
-          <F k="Project No" v={`#${p.id}`} mono />
-          <F k="Owner" v={<PersonLink name={p.owner} email={p.owner_email} subject={`Σχετικά με Project: #${p.id} | ${p.title}`} link={`${window.location.origin}/projects/${p.id}`} />} />
-          <F k="Supervisor" v={<PersonLink name={p.supervisor} email={p.supervisor_email} subject={`Σχετικά με Project: #${p.id} | ${p.title}`} link={`${window.location.origin}/projects/${p.id}`} />} />
-          <F k="Status" v={p.status} />
-          <F k="ON_GOING" v={p.on_going ? '✓ Ναι' : '—'} />
-          <F k="Product" v={p.product} />
-          <F k="Start date" v={fmtDate(p.start_date)} mono />
-          <F k="End date" v={fmtDate(p.end_date)} mono />
-          <F k="Proposed start" v={fmtDate(p.proposed_start)} mono />
-          <F k="Deadline" v={fmtDate(p.deadline)} mono />
-          <F k="Link" v={p.link} />
-        </div>
+      <div className="tabs">
+        {['General', 'Notes', 'Comments', 'Communications'].map((t) => (
+          <button key={t} className={'tab' + (t === tab ? ' on' : '')} onClick={() => setTab(t)}>{t}</button>
+        ))}
+      </div>
 
-        {/* RACI */}
-        {(() => {
-          // Map from resource ID → person name and email (for hover tooltip + mail link)
-          const personMap = new Map(resources.map((r) => [r.id, r.personName || r.email || '']))
-          const emailMap  = new Map(resources.map((r) => [r.id, r.email || '']))
-          const RaciVal = ({ ids, names }) => {
-            if (!names?.length) return <span>—</span>
-            return (
-              <span>
-                {names.map((name, i) => {
-                  const rid = String(ids?.[i] ?? '')
-                  const email = emailMap.get(rid) || ''
-                  const personName = personMap.get(rid) || name
-                  return (
-                    <span key={i}>
-                      <PersonLink name={name} email={email} subject={`Σχετικά με Project: #${p.id} | ${p.title}`} link={`${window.location.origin}/projects/${p.id}`}
-                        title={email ? `Mail To: ${personName}` : undefined} />
-                      {i < names.length - 1 ? ', ' : ''}
-                    </span>
-                  )
-                })}
-              </span>
-            )
-          }
-          return (
-            <div className="raci-box">
-              <h3>RACI</h3>
-              <div className="fields">
-                <div className="field"><div className="k">Responsible (R)</div><div className="v"><RaciVal ids={p.responsible_ids} names={p.responsible} /></div></div>
-                <div className="field"><div className="k">Accountable (A)</div><div className="v"><RaciVal ids={p.accountable_ids} names={p.accountable} /></div></div>
-                <div className="field"><div className="k">Consulted (C)</div><div className="v"><RaciVal ids={p.consulted_ids} names={p.consulted} /></div></div>
-                <div className="field"><div className="k">Informed (I)</div><div className="v"><RaciVal ids={p.informed_ids} names={p.informed} /></div></div>
-              </div>
+      <div className="card" style={{ padding: 18, marginBottom: 18 }}>
+        {tab === 'General' && (
+          <>
+            <div className="fields">
+              <F k="Project No" v={`#${p.id}`} mono />
+              <F k="Owner" v={<PersonLink name={p.owner} email={p.owner_email} subject={`Σχετικά με Project: #${p.id} | ${p.title}`} link={`${window.location.origin}/projects/${p.id}`} />} />
+              <F k="Supervisor" v={<PersonLink name={p.supervisor} email={p.supervisor_email} subject={`Σχετικά με Project: #${p.id} | ${p.title}`} link={`${window.location.origin}/projects/${p.id}`} />} />
+              <F k="Status" v={p.status} />
+              <F k="ON_GOING" v={p.on_going ? '✓ Ναι' : '—'} />
+              <F k="Product" v={p.product} />
+              <F k="Start date" v={fmtDate(p.start_date)} mono />
+              <F k="End date" v={fmtDate(p.end_date)} mono />
+              <F k="Proposed start" v={fmtDate(p.proposed_start)} mono />
+              <F k="Deadline" v={fmtDate(p.deadline)} mono />
+              <F k="Link" v={p.link} />
             </div>
-          )
-        })()}
-        {p.notes && (
-          <div className="notesblock" style={{ marginTop: 12 }}>
-            <h3>Notes</h3>
-            <p dangerouslySetInnerHTML={{ __html: sanitizeHtml(p.notes) }} />
+
+            {/* RACI */}
+            {(() => {
+              const personMap = new Map(resources.map((r) => [r.id, r.personName || r.email || '']))
+              const emailMap  = new Map(resources.map((r) => [r.id, r.email || '']))
+              const RaciVal = ({ ids, names }) => {
+                if (!names?.length) return <span>—</span>
+                return (
+                  <span>
+                    {names.map((name, i) => {
+                      const rid = String(ids?.[i] ?? '')
+                      const email = emailMap.get(rid) || ''
+                      const personName = personMap.get(rid) || name
+                      return (
+                        <span key={i}>
+                          <PersonLink name={name} email={email} subject={`Σχετικά με Project: #${p.id} | ${p.title}`} link={`${window.location.origin}/projects/${p.id}`}
+                            title={email ? `Mail To: ${personName}` : undefined} />
+                          {i < names.length - 1 ? ', ' : ''}
+                        </span>
+                      )
+                    })}
+                  </span>
+                )
+              }
+              return (
+                <div className="raci-box">
+                  <h3>RACI</h3>
+                  <div className="fields">
+                    <div className="field"><div className="k">Responsible (R)</div><div className="v"><RaciVal ids={p.responsible_ids} names={p.responsible} /></div></div>
+                    <div className="field"><div className="k">Accountable (A)</div><div className="v"><RaciVal ids={p.accountable_ids} names={p.accountable} /></div></div>
+                    <div className="field"><div className="k">Consulted (C)</div><div className="v"><RaciVal ids={p.consulted_ids} names={p.consulted} /></div></div>
+                    <div className="field"><div className="k">Informed (I)</div><div className="v"><RaciVal ids={p.informed_ids} names={p.informed} /></div></div>
+                  </div>
+                </div>
+              )
+            })()}
+          </>
+        )}
+
+        {tab === 'Notes' && (
+          <div className="notesblock">
+            {p.notes
+              ? <p dangerouslySetInnerHTML={{ __html: sanitizeHtml(p.notes) }} />
+              : <div style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Δεν υπάρχουν σημειώσεις.</div>
+            }
           </div>
         )}
 
-        <CommentsPanel listName={LISTS.projects} itemId={id} currentEmail={profile.email} />
+        {tab === 'Comments' && (
+          <CommentsPanel listName={LISTS.projects} itemId={id} currentEmail={profile.email} />
+        )}
+
+        {tab === 'Communications' && (
+          <MsgDropPanel listName={LISTS.projects} itemId={id} canEdit={effectiveRole !== 'resource'} />
+        )}
       </div>
 
       <h2 style={{ fontSize: 15, margin: '6px 2px 10px' }}>Tasks in this project ({tasks.length})</h2>

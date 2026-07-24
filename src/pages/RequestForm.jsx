@@ -379,7 +379,7 @@ export default function RequestForm() {
           </div>
         )}
 
-        {editing && <AttachmentsPanel listName={LISTS.requests} itemId={id} canEdit={!isReadOnly} />}
+        {editing && <AttachmentsPanel listName={LISTS.requests} itemId={id} canEdit={!isReadOnly} exclude={['.msg']} />}
         {editing && <CommentsPanel listName={LISTS.requests} itemId={id} currentEmail={profile.email} />}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fetchRequest, fetchHistory, removeRequest } from '../lib/api'
-import { StatusBadge, Flags, CommentsPanel, ConfirmDialog, PersonLink } from '../components/ui'
+import { StatusBadge, Flags, CommentsPanel, ConfirmDialog, PersonLink, MsgDropPanel } from '../components/ui'
 import { fmtDate, fmtDateTime, outlookDeadlineUrl } from '../lib/meta'
 import { LISTS } from '../lib/sp'
 
@@ -143,16 +143,21 @@ export default function RequestDetail() {
           </ul>
         )}
         {tab === 'Communications' && (
-          <div className="notesblock">
-            <p style={{ marginBottom: 12 }}>Manual communication opens a draft in your mail client; workflow events are emailed automatically.</p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <a className="btn" href={teamEmails
-                ? `mailto:${teamEmails}?subject=${encodeURIComponent(`Regarding request No: ${r.reference_number ?? `#${r.id}`}`)}&body=${encodeURIComponent(`${window.location.origin}/requests/${r.id}`)}`
-                : undefined}
-                style={!teamEmails ? { opacity: .5, pointerEvents: 'none' } : undefined}>
-                Message implementors
-              </a>
+          <div>
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ marginBottom: 10, fontSize: 13, color: 'var(--ink-soft)' }}>
+                Γρήγορη αποστολή email — ανοίγει draft στον mail client σας.
+              </p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <a className="btn" href={teamEmails
+                  ? `mailto:${teamEmails}?subject=${encodeURIComponent(`Regarding request No: ${r.reference_number ?? `#${r.id}`}`)}&body=${encodeURIComponent(`${window.location.origin}/requests/${r.id}`)}`
+                  : undefined}
+                  style={!teamEmails ? { opacity: .5, pointerEvents: 'none' } : undefined}>
+                  Message implementors
+                </a>
+              </div>
             </div>
+            <MsgDropPanel listName={LISTS.requests} itemId={id} canEdit={canEdit} />
           </div>
         )}
       </div>
