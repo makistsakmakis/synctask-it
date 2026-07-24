@@ -616,12 +616,20 @@ export function RequestGrid({ rows, columns, filters, defaultFilter = 'Open', em
   )
 }
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+function buildMailHref(email, subject, link) {
+  let href = `mailto:${email}?subject=${encodeURIComponent(subject ?? '')}`
+  if (link) href += `&body=${encodeURIComponent(link)}`
+  return href
+}
+
 // ── PersonLink — clickable person name that opens a mailto ──────────────────
-export function PersonLink({ name, email, subject }) {
+// link: URL to embed in the email body (e.g. the project/task page)
+export function PersonLink({ name, email, subject, link }) {
   if (!name && !email) return <span>—</span>
   const display = name || email
   if (!email) return <span>{display}</span>
-  const href = `mailto:${email}?subject=${encodeURIComponent(subject ?? '')}`
+  const href = buildMailHref(email, subject, link)
   return (
     <a href={href} title={`Mail To: ${name || email}`}
       style={{ color: 'var(--accent)', textDecoration: 'underline dotted', textUnderlineOffset: 2, cursor: 'pointer' }}
@@ -632,9 +640,9 @@ export function PersonLink({ name, email, subject }) {
 }
 
 // ── MailBtn — small mail icon to show next to a <select> ────────────────────
-export function MailBtn({ email, name, subject }) {
+export function MailBtn({ email, name, subject, link }) {
   if (!email) return null
-  const href = `mailto:${email}?subject=${encodeURIComponent(subject ?? '')}`
+  const href = buildMailHref(email, subject, link)
   return (
     <a href={href} title={`Mail To: ${name || email}`}
       style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--accent)', fontSize: 15,
@@ -662,7 +670,7 @@ export function ConfirmDialog({ title, body, onYes, onNo, busy }) {
 
 // Multi-select person picker for RACI fields.
 // options: [{ id, name }], value: string[] of IDs
-export function MultiPersonSelect({ options, value, onChange, disabled, tooltipMap, emailMap, subject }) {
+export function MultiPersonSelect({ options, value, onChange, disabled, tooltipMap, emailMap, subject, link }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -681,7 +689,7 @@ export function MultiPersonSelect({ options, value, onChange, disabled, tooltipM
     const email = emailMap?.get(o.id) || ''
     const tooltipName = tip || o.name
     if (email) {
-      const href = `mailto:${email}?subject=${encodeURIComponent(subject ?? '')}`
+      const href = buildMailHref(email, subject, link)
       return (
         <span key={o.id}>
           <a href={href} title={`Mail To: ${tooltipName}`}

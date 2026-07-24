@@ -71,7 +71,7 @@ export default function RequestDetail() {
             title={r.assigned_to_email
               ? `Ανοίγει email έγκρισης προς τον manager του πεδίου Assigned to (${r.assigned_to_email})`
               : 'Ανοίγει email έγκρισης — το task είναι Unassigned, συμπληρώστε τον παραλήπτη'}
-            onClick={() => { window.location.href = `mailto:${r.assigned_to_email ?? ''}?subject=${encodeURIComponent(`Έγκριση Task #${r.id} ${r.title}`)}` }}>
+            onClick={() => { window.location.href = `mailto:${r.assigned_to_email ?? ''}?subject=${encodeURIComponent(`Έγκριση Task #${r.id} ${r.title}`)}&body=${encodeURIComponent(`${window.location.origin}/requests/${r.id}`)}` }}>
             ✉ Έγκριση Προϊσταμένου
           </button>
           {r.golive_required && (
@@ -95,8 +95,8 @@ export default function RequestDetail() {
       <div className="card" style={{ padding: 16 }}>
         {tab === 'General' && (
           <div className="fields">
-            <F k="Created By" v={<PersonLink name={r.created_by ?? r.requestor_name ?? ''} email={r.requestor_email} subject={`Σχετικά με Task: #${r.id} | ${r.title}`} />} />
-            <F k="Assigned to" v={<PersonLink name={r.assigned_to} email={r.assigned_to_email} subject={`Σχετικά με Task: #${r.id} | ${r.title}`} />} />
+            <F k="Created By" v={<PersonLink name={r.created_by ?? r.requestor_name ?? ''} email={r.requestor_email} subject={`Σχετικά με Task: #${r.id} | ${r.title}`} link={`${window.location.origin}/requests/${r.id}`} />} />
+            <F k="Assigned to" v={<PersonLink name={r.assigned_to} email={r.assigned_to_email} subject={`Σχετικά με Task: #${r.id} | ${r.title}`} link={`${window.location.origin}/requests/${r.id}`} />} />
             <F k="Project" v={r.project_id
               ? <a href={`/projects/${r.project_id}`} target="_blank" rel="noopener noreferrer"
                   style={{ color: 'var(--accent)', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}>
@@ -147,7 +147,7 @@ export default function RequestDetail() {
             <p style={{ marginBottom: 12 }}>Manual communication opens a draft in your mail client; workflow events are emailed automatically.</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <a className="btn" href={teamEmails
-                ? `mailto:${teamEmails}?subject=${encodeURIComponent(`Regarding request No: ${r.reference_number ?? `#${r.id}`}`)}`
+                ? `mailto:${teamEmails}?subject=${encodeURIComponent(`Regarding request No: ${r.reference_number ?? `#${r.id}`}`)}&body=${encodeURIComponent(`${window.location.origin}/requests/${r.id}`)}`
                 : undefined}
                 style={!teamEmails ? { opacity: .5, pointerEvents: 'none' } : undefined}>
                 Message implementors

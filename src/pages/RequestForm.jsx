@@ -159,11 +159,13 @@ export default function RequestForm() {
           // Supervisor → COO (Resources με Is_SuperUser)
           const coo = (await fetchResources().catch(() => []))
             .filter((r) => r.is_superuser && r.email).map((r) => r.email).join(',')
-          window.location.href = `mailto:${coo}?subject=${encodeURIComponent(`Εγκεκριμένο Task #${target} ${subjTitle}`)}`
+          const taskBody = `${window.location.origin}/requests/${target}`
+          window.location.href = `mailto:${coo}?subject=${encodeURIComponent(`Εγκεκριμένο Task #${target} ${subjTitle}`)}&body=${encodeURIComponent(taskBody)}`
         } else {
           // Απλός χρήστης → ο manager του πεδίου Assigned to
           const mgrEmail = userOpts.find((u) => u.id === String(merged.assigned_to_id))?.email ?? ''
-          window.location.href = `mailto:${mgrEmail}?subject=${encodeURIComponent(`Έγκριση Task #${target} ${subjTitle}`)}`
+          const taskBody = `${window.location.origin}/requests/${target}`
+          window.location.href = `mailto:${mgrEmail}?subject=${encodeURIComponent(`Έγκριση Task #${target} ${subjTitle}`)}&body=${encodeURIComponent(taskBody)}`
         }
       }
       nav(`/requests/${target}`)
@@ -277,7 +279,7 @@ export default function RequestForm() {
                 <option value="">Unassigned</option>
                 {assigneeOpts.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
-              {(() => { const u = assigneeOpts.find((u) => u.id === form.assigned_to_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με Task: #${id || 'NEW'} | ${form.title}`} /> : null })()}
+              {(() => { const u = assigneeOpts.find((u) => u.id === form.assigned_to_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με Task: #${id || 'NEW'} | ${form.title}`} link={id ? `${window.location.origin}/requests/${id}` : ''} /> : null })()}
             </div>
           </label>
           <label className="f">

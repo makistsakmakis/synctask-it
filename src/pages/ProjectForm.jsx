@@ -223,7 +223,8 @@ export default function ProjectForm() {
           const sup = users.find((u) => u.id === String(merged.supervisor_id))
           if (sup?.email) {
             const subject = `${merged.title.trim().slice(0, 60)} Needs your signoff`
-            window.location.href = `mailto:${sup.email}?subject=${encodeURIComponent(subject)}`
+            const body = `${window.location.origin}/projects/${nid}`
+            window.location.href = `mailto:${sup.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
           }
         }
         nav(`/projects/${nid}`)
@@ -341,7 +342,7 @@ export default function ProjectForm() {
                 <option value="">Select…</option>
                 {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
-              {(() => { const u = users.find((u) => u.id === form.owner_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με Project: #${id || 'NEW'} | ${form.title}`} /> : null })()}
+              {(() => { const u = users.find((u) => u.id === form.owner_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με Project: #${id || 'NEW'} | ${form.title}`} link={id ? `${window.location.origin}/projects/${id}` : ''} /> : null })()}
             </div>
           </label>
           <label className="f">
@@ -352,7 +353,7 @@ export default function ProjectForm() {
                 <option value="">Select supervisor…</option>
                 {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
-              {(() => { const u = users.find((u) => u.id === form.supervisor_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με Project: #${id || 'NEW'} | ${form.title}`} /> : null })()}
+              {(() => { const u = users.find((u) => u.id === form.supervisor_id); return u?.email ? <MailBtn email={u.email} name={u.name} subject={`Σχετικά με Project: #${id || 'NEW'} | ${form.title}`} link={id ? `${window.location.origin}/projects/${id}` : ''} /> : null })()}
             </div>
           </label>
           <label className="f" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
@@ -443,7 +444,7 @@ export default function ProjectForm() {
                     disabled={!allowed(key)}
                     tooltipMap={raciTooltipMap}
                     emailMap={raciEmailMap}
-                    subject={`Σχετικά με Project: #${id || 'NEW'} | ${form.title}`}
+                    subject={`Σχετικά με Project: #${id || 'NEW'} | ${form.title}`} link={id ? `${window.location.origin}/projects/${id}` : ''}
                   />
                 </div>
               ))

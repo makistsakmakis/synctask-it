@@ -56,7 +56,8 @@ export default function ProjectDetail() {
   const mailToTeam = () => {
     const emails = getTeamEmails()
     const subject = `#${p.id} - ${p.title}`.slice(0, 70)
-    window.location.href = `mailto:${emails.join(',')}?subject=${encodeURIComponent(subject)}`
+    const body = `${window.location.origin}/projects/${p.id}`
+    window.location.href = `mailto:${emails.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
   }
 
   const meetTheTeam = () => {
@@ -95,8 +96,8 @@ export default function ProjectDetail() {
       <div className="card" style={{ padding: 18, marginBottom: 18 }}>
         <div className="fields">
           <F k="Project No" v={`#${p.id}`} mono />
-          <F k="Owner" v={<PersonLink name={p.owner} email={p.owner_email} subject={`Σχετικά με Project: #${p.id} | ${p.title}`} />} />
-          <F k="Supervisor" v={<PersonLink name={p.supervisor} email={p.supervisor_email} subject={`Σχετικά με Project: #${p.id} | ${p.title}`} />} />
+          <F k="Owner" v={<PersonLink name={p.owner} email={p.owner_email} subject={`Σχετικά με Project: #${p.id} | ${p.title}`} link={`${window.location.origin}/projects/${p.id}`} />} />
+          <F k="Supervisor" v={<PersonLink name={p.supervisor} email={p.supervisor_email} subject={`Σχετικά με Project: #${p.id} | ${p.title}`} link={`${window.location.origin}/projects/${p.id}`} />} />
           <F k="Status" v={p.status} />
           <F k="ON_GOING" v={p.on_going ? '✓ Ναι' : '—'} />
           <F k="Product" v={p.product} />
@@ -122,7 +123,7 @@ export default function ProjectDetail() {
                   const personName = personMap.get(rid) || name
                   return (
                     <span key={i}>
-                      <PersonLink name={name} email={email} subject={`Σχετικά με Project: #${p.id} | ${p.title}`}
+                      <PersonLink name={name} email={email} subject={`Σχετικά με Project: #${p.id} | ${p.title}`} link={`${window.location.origin}/projects/${p.id}`}
                         title={email ? `Mail To: ${personName}` : undefined} />
                       {i < names.length - 1 ? ', ' : ''}
                     </span>
