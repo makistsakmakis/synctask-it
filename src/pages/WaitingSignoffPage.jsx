@@ -45,7 +45,7 @@ const TASK_COLUMNS = [
   { key: 'title', label: 'Title', ftype: 'text',
     render: (t) => <span className="ctitle" title={t.title}>{t.title}</span> },
   { key: 'project_name', label: 'Project', render: (t) => t.project_name ?? '—' },
-  { key: 'requestor_name', label: 'Requestor', render: (t) => t.requestor_name ?? '—' },
+  { key: 'created_by', label: 'Created By', render: (t) => t.created_by ?? '—' },
   { key: 'status', label: 'Status', render: (t) => <StatusBadge status={t.status} />, text: (t) => t.status ?? '' },
   { key: 'golive_required', label: 'Due', ftype: 'date',
     render: (t) => <span className="mono">{fmtDate(t.golive_required)}</span>, text: (t) => fmtDate(t.golive_required) },

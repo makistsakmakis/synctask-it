@@ -41,18 +41,32 @@ export default function ProjectDetail() {
     catch { setBusy(false); setConfirm(false) }
   }
 
-  const mailToTeam = () => {
+  const getTeamEmails = () => {
     const byId = new Map(resources.map((r) => [String(r.id), (r.email || '').toLowerCase()]))
     const raciIds = [
       ...(p.responsible_ids ?? []), ...(p.accountable_ids ?? []),
       ...(p.consulted_ids ?? []), ...(p.informed_ids ?? []),
     ]
-    const emails = [...new Set(
+    return [...new Set(
       [p.owner_email, p.supervisor_email, ...raciIds.map((i) => byId.get(String(i)))]
         .map((e) => (e || '').trim()).filter(Boolean)
     )]
+  }
+
+  const mailToTeam = () => {
+    const emails = getTeamEmails()
     const subject = `#${p.id} - ${p.title}`.slice(0, 70)
     window.location.href = `mailto:${emails.join(',')}?subject=${encodeURIComponent(subject)}`
+  }
+
+  const meetTheTeam = () => {
+    const emails = getTeamEmails()
+    const subject = encodeURIComponent(`[Meeting] #${p.id} - ${p.title}`.slice(0, 70))
+    const to = encodeURIComponent(emails.join(';'))
+    window.open(
+      `https://outlook.office.com/calendar/action/compose?subject=${subject}&to=${to}`,
+      '_blank'
+    )
   }
 
   const F = ({ k, v, mono }) => (
@@ -71,6 +85,7 @@ export default function ProjectDetail() {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn" onClick={mailToTeam} title="Νέο email προς όλους τους εμπλεκόμενους">✉ Mail-2-Team</button>
+          <button className="btn" onClick={meetTheTeam} title="Νέο meeting request προς όλους τους εμπλεκόμενους">📅 Meet the Team</button>
           <button className="btn" onClick={() => nav(`/requests/new?project=${id}`)}>New task</button>
           <button className="btn" onClick={() => nav(`/projects/${id}/edit`)}>Edit</button>
           {isAdmin && <button className="btn danger" onClick={() => setConfirm(true)}>Delete</button>}
