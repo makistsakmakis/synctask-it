@@ -1,4 +1,4 @@
-import { LISTS, listItems, getItem, createItem, updateItemFields, getItemVersions, getSiteUsers, getTitleMap } from './sp'
+import { LISTS, listItems, getItem, createItem, updateItemFields, deleteItem, getItemVersions, getSiteUsers, getTitleMap } from './sp'
 import { REQUEST_FIELDS, MANAGER_FIELDS, RESOURCE_FIELDS, toSP, fromSP } from './fields'
 
 // Lookup-target lists for join resolution (display names in the site).
@@ -13,7 +13,20 @@ const emailOf = (u, personId) => (u.get(String(personId))?.email ?? '')
 let _projectsP = null
 function projectMap() { return (_projectsP ??= getTitleMap(PROJECTS_LIST).catch(() => new Map())) }
 let _tagsP = null
-function tagMap() { return (_tagsP ??= getTitleMap(TAGS_LIST).catch(() => new Map())) }
+function tagMap() { return (_tagsP ??= loadTagMap()) }
+// Tags list: Title + χρώμα (εντοπίζεται αυτόματα όποια στήλη περιέχει 'color')
+async function loadTagMap() {
+  try {
+    const items = await listItems(TAGS_LIST)
+    const m = new Map()
+    for (const it of items) {
+      const f = it.fields ?? {}
+      const colorKey = Object.keys(f).find((k) => k.toLowerCase().includes('color') || k.toLowerCase().includes('colour'))
+      m.set(String(it.id), { title: f.Title ?? '', color: colorKey ? String(f[colorKey] ?? '').trim() : '' })
+    }
+    return m
+  } catch { return new Map() }
+}
 
 // Option lists for editable dropdowns (Owner/AssignedTo, Project, Tag).
 export async function fetchUserOptions() {
@@ -24,13 +37,14 @@ export async function fetchUserOptions() {
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 export async function fetchProjectOptions() {
-  const m = await projectMap()
-  return [...m.entries()].map(([id, title]) => ({ id: String(id), title }))
+  const items = await listItems(PROJECTS_LIST)
+  return items
+    .map((i) => ({ id: String(i.id), title: i.fields?.Title ?? '', on_going: Boolean(i.fields?.ON_GOING) }))
     .filter((o) => o.title).sort((a, b) => a.title.localeCompare(b.title))
 }
 export async function fetchTagOptions() {
   const m = await tagMap()
-  return [...m.entries()].map(([id, title]) => ({ id: String(id), title }))
+  return [...m.entries()].map(([id, v]) => ({ id: String(id), title: v.title }))
     .filter((o) => o.title).sort((a, b) => a.title.localeCompare(b.title))
 }
 
@@ -39,7 +53,8 @@ export function fetchManagers() {
   return (_managersP ??= Promise.all([listItems(LISTS.managers), users()]).then(([items, u]) =>
     items.map((i) => ({
       id: String(i.id),
-      name: i.fields?.[MANAGER_FIELDS.name] ?? '',
+      person_id: String(i.fields?.[MANAGER_FIELDS.person_id] ?? ''), // site user ID of the manager person
+      name: i.fields?.[MANAGER_FIELDS.name] ?? '',                   // role title e.g. "COO"
       email: emailOf(u, i.fields?.[MANAGER_FIELDS.person_id]),
     }))))
 }
@@ -57,19 +72,27 @@ export function fetchResources() {
     }))))
 }
 
+// Flat { id, name } list for RACI pickers (sorted by name)
+export async function fetchResourceOptions() {
+  const items = await listItems(LISTS.resources)
+  return items
+    .map((i) => ({ id: String(i.id), name: i.fields?.Title ?? String(i.id) }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'el'))
+}
+
 // ---------- shaping ----------
 async function shape(item) {
-  const [managers, , u, projects, tags] =
+  const [, , u, projects, tags] =
     await Promise.all([fetchManagers(), fetchResources(), users(), projectMap(), tagMap()])
   const r = fromSP(item)
 
-  const approverName = (r.approver_email ?? '').trim()
-  r.approver = managers.find((m) => m.name === approverName)
-    ?? (approverName ? { name: approverName, email: '', division: { name: '' } } : null)
+  // Supervisor (approver) now lives on the Project, not the Task.
+  // approver_email is __none_ in REQUEST_FIELDS so r.approver_email === null.
+  r.approver = null
 
   // AssignedTo (person) → name/email via the site users map.
   const who = u.get(String(r.assigned_to_id))
-  r.assigned_to = who?.title ?? null
+  r.assigned_to       = who?.title ?? null
   r.assigned_to_email = who?.email ?? ''
   // Keep the implementors shape the rest of the UI expects (single assignee).
   r.implementors = r.assigned_to_email
@@ -77,7 +100,9 @@ async function shape(item) {
     : []
 
   r.project_name = projects.get(String(r.project_id)) ?? null
-  r.tag_name = tags.get(String(r.tag_id)) ?? null
+  const tagInfo  = tags.get(String(r.tag_id))
+  r.tag_name     = tagInfo?.title ?? null
+  r.tag_color    = tagInfo?.color ?? ''
   return r
 }
 
@@ -119,9 +144,6 @@ export async function createRequest(fields, profile) {
     ...fields,
     status: fields.status || 'Not Started',
   }))
-  // Reference number only if the Tasks list actually has a column for it.
-  // (It currently doesn't, so this is skipped — a Power Automate flow can
-  // still populate one server-side.)
   const refCol = REQUEST_FIELDS.reference_number
   if (refCol && !refCol.startsWith('__none_')) {
     const ref = `ITR-${new Date().toISOString().slice(0, 10)}-${String(created.id).padStart(6, '0')}`
@@ -134,60 +156,14 @@ export async function updateRequest(id, fields) {
   await updateItemFields(LISTS.requests, id, toSP(fields))
 }
 
-// ---------- workflow transitions (spec §14) ----------
-// NOTE: with SharePoint as the store these run client-side — same trust model the
-// approved spec accepted for v1. Each guard re-checks status before writing.
-const now = () => new Date().toISOString()
-
-async function transition(id, expectedStatuses, patch) {
-  const r = await fetchRequest(id)
-  if (!expectedStatuses.includes(r.status))
-    throw new Error(`Request is no longer in ${expectedStatuses.join('/')} status.`)
-  await updateItemFields(LISTS.requests, id, toSP(patch))
-  return r
+export async function removeRequest(id) {
+  await deleteItem(LISTS.requests, id)
 }
 
-export const approveRequest = (id) =>
-  transition(id, ['Planned'], { status: 'Approved', manager_approval_date: now() })
-
-export const rejectRequest = (id) =>
-  transition(id, ['Planned'], { status: 'Cancelled', cancelled_date: now() })
-
-export const cancelRequest = async (id) => {
-  const r = await fetchRequest(id)
-  if (['Completed', 'Cancelled'].includes(r.status))
-    throw new Error('Record is closed and read-only.')
-  await updateItemFields(LISTS.requests, id, toSP({ status: 'Cancelled', cancelled_date: now() }))
-}
-
-export const startRequest = (id) =>
-  transition(id, ['Approved', 'On Hold'], { status: 'In Process', actual_start: now() })
-
-export const holdRequest = (id) =>
-  transition(id, ['In Process'], { status: 'On Hold', onhold_date: now() })
-
-export const completeRequest = async (id, actualCompletion, actualManhours, resolutionSummary) => {
-  if (!actualCompletion || actualManhours == null || actualManhours < 0 || !resolutionSummary?.trim())
-    throw new Error('Validation failed. Please check required fields.')
-  return transition(id, ['In Process'], {
-    status: 'Completed',
-    actual_completion: actualCompletion,
-    actual_manhours: actualManhours,
-    resolution_summary: resolutionSummary,
-    coo_prioritization: 99999999,
-  })
-}
-
-export const assignRequest = async (id, resourceIds, cooPriority, expectedStart) => {
-  if (!resourceIds?.length) throw new Error('Validation failed. Please check required fields.')
-  const resources = await fetchResources()
-  const emails = resourceIds
-    .map((rid) => resources.find((r) => r.id === rid)?.email)
-    .filter(Boolean).join('; ')
-  return transition(id, ['Approved'], {
-    implementors: emails,
-    coo_prioritization: cooPriority,
-    expected_start: expectedStart,
-    assigned_date: now(),
-  })
+// Πλήθος μη ολοκληρωμένων tasks ενός project (για το Completed confirm των Project Status Rules)
+export async function fetchPendingTaskCount(projectId) {
+  const items = await listItems(LISTS.requests)
+  return items.filter((i) =>
+    String(i.fields?.[REQUEST_FIELDS.project_id] ?? '') === String(projectId)
+    && (i.fields?.[REQUEST_FIELDS.status] ?? '') !== 'Completed').length
 }

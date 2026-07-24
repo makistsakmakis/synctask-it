@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 230">
+  <defs>
+    <linearGradient id="gBlue" x1="12" y1="60" x2="158" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#1a4ecf"/>
+      <stop offset="100%" stop-color="#4b9bff"/>
+    </linearGradient>
+    <linearGradient id="gTeal" x1="208" y1="140" x2="62" y2="105" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#00897b"/>
+      <stop offset="100%" stop-color="#00d4b8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ── TEAL lower reversed-C (draw first so blue sits on top) ──────────── -->
+  <!-- Path: starts lower-right, curves under/right, ends center-left pointing LEFT -->
+  <path d="M 148,152 Q 205,152 205,118 Q 205,98 66,103"
+        stroke="url(#gTeal)" stroke-width="26" fill="none" stroke-linecap="round"/>
+  <!-- Teal arrowhead pointing LEFT at (50,103) -->
+  <polygon points="68,91 50,103 68,115" fill="#00d4b8"/>
+
+  <!-- ── BLUE upper C (drawn on top) ──────────────────────────────────────── -->
+  <!-- Path: starts upper-left, curves over/left, ends center-right pointing RIGHT -->
+  <path d="M 72,58 Q 15,58 15,90 Q 15,115 142,110"
+        stroke="url(#gBlue)" stroke-width="26" fill="none" stroke-linecap="round"/>
+  <!-- Blue arrowhead pointing RIGHT at (158,110) -->
+  <polygon points="140,98 158,110 140,122" fill="#4b9bff"/>
+
+  <!-- ── "SyncFlow" text ─────────────────────────────────────────────────── -->
+  <text x="110" y="207"
+        font-family="'Arial Black','Impact','Helvetica Neue',Arial,sans-serif"
+        font-weight="900" font-size="30" text-anchor="middle" letter-spacing="-0.5">
+    <tspan fill="white">Sync</tspan><tspan fill="#4b9bff">Flow</tspan>
+  </text>
+</svg>

@@ -4,21 +4,28 @@ import { getAccount, signOut, CONFIGURED } from './lib/auth'
 import { fetchManagers, fetchResources } from './lib/api'
 import Login from './pages/Login'
 import RequestsPage from './pages/RequestsPage'
-import Dashboard from './pages/Dashboard'
 import RequestDetail from './pages/RequestDetail'
 import RequestForm from './pages/RequestForm'
-import KanbanPage from './pages/KanbanPage'
-import ProjectsKanbanPage from './pages/ProjectsKanban'
-import ProjectsDashboard from './pages/ProjectsDashboard'
+import TasksOverview from './pages/TasksOverview'
+import ProjectsOverview from './pages/ProjectsOverview'
 import ProjectsPage from './pages/ProjectsPage'
 import ProjectDetail from './pages/ProjectDetail'
 import ProjectForm from './pages/ProjectForm'
 import Diag from './pages/Diag'
+import ProjectImport from './pages/ProjectImport'
+import WaitingSignoffPage from './pages/WaitingSignoffPage'
+import WelcomePage from './pages/WelcomePage'
 
 const SessionCtx = createContext(null)
 export const useSession = () => useContext(SessionCtx)
 
-const ROLE_LABEL = { requestor: 'Requestor', manager: 'Manager', resource: 'Implementor', admin: 'Admin / COO' }
+// Role labels:
+//   requestor → Owner    (ανοίγει projects, βλέπει view-only tasks)
+//   manager   → Supervisor (εγκρίνει projects, βλέπει view-only tasks)
+//   resource  → Implementor (εκτελεί tasks)
+//   admin     → Admin / COO (πλήρης έλεγχος)
+const ROLE_LABEL = { requestor: 'Owner', manager: 'Supervisor', resource: 'Implementor', admin: 'Admin / COO' }
+
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS ?? '')
   .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
 
@@ -28,33 +35,44 @@ function Shell({ children }) {
   return (
     <div className="shell">
       <aside className="side">
-        <div className="brand">Sync<span>Task</span></div>
+        <img src="/syncflow-logo.png" alt="" className="side-logo" />
         <div className="who">
           <b>{profile.name}</b>
           {profile.email}<br />{ROLE_LABEL[role]}{previewRole ? ' (preview)' : ''}
         </div>
         <nav>
-          {role === 'admin' && <NavLink to="/dashboard" end>Tasks Dashboard</NavLink>}
-          <NavLink to="/dashboard/projects">Projects Dashboard</NavLink>
+          {/* Welcome: 1η επιλογή, όλοι οι ρόλοι */}
+          <NavLink to="/welcome">Welcome</NavLink>
+          {/* Tasks Overview: admin only */}
+          {role === 'admin' && <NavLink to="/overview/tasks">Tasks Overview</NavLink>}
+          {/* Projects Overview: admin only (kanban/dashboard) */}
+          {role === 'admin' && <NavLink to="/overview/projects">Projects Overview</NavLink>}
+          {/* Tasks list: all roles — Owner/Supervisor see it read-only, Implementor sees assigned tasks */}
           <NavLink to="/requests" end>Tasks</NavLink>
+          {/* Projects list: all roles (resource sees only projects of their tasks) */}
           <NavLink to="/projects">Projects</NavLink>
-          {role === 'admin' && <NavLink to="/kanban" end>TASKS - Kanban</NavLink>}
-          <NavLink to="/kanban/projects">Projects - Kanban</NavLink>
+          {/* Waiting for Signoff: μόνο Admin + Supervisor (τελευταία επιλογή) */}
+          {(role === 'admin' || role === 'manager') && <NavLink to="/signoff">Waiting for Signoff</NavLink>}
         </nav>
         {profile.role === 'admin' && (
           <label className="f" style={{ marginTop: 14 }}>
             <span className="k" style={{ color: '#9aa1ad', fontSize: 11 }}>Role preview</span>
             <select value={previewRole ?? ''} onChange={(e) => setPreviewRole(e.target.value || null)}>
               <option value="">Admin (me)</option>
-              <option value="requestor">Requestor</option>
-              <option value="manager">Manager</option>
+              <option value="requestor">Owner</option>
+              <option value="manager">Supervisor</option>
               <option value="resource">Implementor</option>
             </select>
           </label>
         )}
+        {/* Εταιρικό λογότυπο Inventor */}
+        <img src="/INVENTOR_LOGO_SM_TRANS.png" alt="inventor — We invent. You live." className="side-inventor" />
         <button className="out" onClick={async () => { await signOut(); window.location.assign('/') }}>
           Sign out
         </button>
+        {/* Help: το εγχειρίδιο χρήσης σε ξεχωριστό tab (τέρμα κάτω) */}
+        <a className="help-link" href="/manual.html" target="_blank" rel="noreferrer">❓ Help</a>
+        <div className="ver">SyncFlow v1.0</div>
       </aside>
       <main className="main">{children}</main>
     </div>
@@ -62,8 +80,8 @@ function Shell({ children }) {
 }
 
 export default function App() {
-  const [account, setAccount] = useState(undefined)
-  const [profile, setProfile] = useState(null)
+  const [account, setAccount]     = useState(undefined)
+  const [profile, setProfile]     = useState(null)
   const [loadError, setLoadError] = useState('')
   const [previewRole, setPreviewRole] = useState(null)
 
@@ -73,16 +91,19 @@ export default function App() {
     if (!account) { setProfile(null); return }
     const email = (account.username ?? '').toLowerCase()
     const base = { id: account.localAccountId, email, name: account.name ?? email }
-    // Role derivation: SuperUser flag or env → admin; Managers list or Is_Manager
-    // flag → manager; Is_Implementor (or any Resources row) → implementor; else requestor.
+    // Role derivation:
+    //   SuperUser flag or env → admin (COO)
+    //   Managers list or Is_Manager flag → manager (Supervisor)
+    //   Is_Implementor (or any Resources row) → resource (Implementor)
+    //   else → requestor (Owner)
     Promise.all([fetchManagers(), fetchResources()])
       .then(([managers, resources]) => {
         const meMgr = managers.find((m) => m.email === email)
         const meRes = resources.find((r) => r.email === email)
         const role =
           ADMIN_EMAILS.includes(email) || meRes?.is_superuser ? 'admin'
-          : meMgr || meRes?.is_manager ? 'manager'
-          : meRes ? 'resource'
+          : meMgr || meRes?.is_manager                        ? 'manager'
+          : meRes                                             ? 'resource'
           : 'requestor'
         setProfile({ ...base, role })
       })
@@ -117,20 +138,29 @@ export default function App() {
       <BrowserRouter>
         <Shell>
           <Routes>
-            <Route path="/" element={<Navigate to={profile.role === 'admin' ? '/dashboard' : '/requests'} replace />} />
-            <Route path="/dashboard" element={profile.role === 'admin' ? <Dashboard /> : <Navigate to="/dashboard/projects" replace />} />
-            <Route path="/dashboard/projects" element={<ProjectsDashboard />} />
+            <Route path="/" element={<Navigate to="/welcome" replace />} />
+            <Route path="/welcome" element={<WelcomePage />} />
+            <Route path="/overview/tasks" element={profile.role === 'admin' ? <TasksOverview /> : <Navigate to="/overview/projects" replace />} />
+            <Route path="/overview/projects" element={profile.role === 'admin' ? <ProjectsOverview /> : <Navigate to="/projects" replace />} />
             <Route path="/requests" element={<RequestsPage />} />
             <Route path="/requests/new" element={<RequestForm />} />
             <Route path="/requests/:id" element={<RequestDetail />} />
             <Route path="/requests/:id/edit" element={<RequestForm />} />
-            <Route path="/kanban" element={profile.role === 'admin' ? <KanbanPage /> : <Navigate to="/kanban/projects" replace />} />
-            <Route path="/kanban/projects" element={<ProjectsKanbanPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/projects/new" element={<ProjectForm />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="/projects/:id/edit" element={<ProjectForm />} />
+            <Route path="/signoff" element={
+              ['admin', 'manager'].includes(previewRole ?? profile.role)
+                ? <WaitingSignoffPage />
+                : <Navigate to="/projects" replace />} />
+            {/* Legacy URLs */}
+            <Route path="/dashboard" element={<Navigate to="/overview/tasks" replace />} />
+            <Route path="/dashboard/projects" element={<Navigate to="/overview/projects" replace />} />
+            <Route path="/kanban" element={<Navigate to="/overview/tasks" replace />} />
+            <Route path="/kanban/projects" element={<Navigate to="/overview/projects" replace />} />
             <Route path="/diag" element={<Diag />} />
+            <Route path="/import" element={profile.role === 'admin' ? <ProjectImport /> : <Navigate to="/projects" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Shell>

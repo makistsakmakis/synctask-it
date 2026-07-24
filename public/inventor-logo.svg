@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 320" role="img" aria-label="inventor — We invent. You live.">
+  <!-- Σήμα: κόκκινος κύκλος με λευκό "i" (έλλειψη + αψίδα) -->
+  <g>
+    <circle cx="152" cy="152" r="146" fill="#e30613"/>
+    <ellipse cx="152" cy="78" rx="80" ry="43" fill="#ffffff"/>
+    <path d="M94,296 L94,200 A58,58 0 0 1 210,200 L210,296 Z" fill="#ffffff"/>
+  </g>
+  <!-- Λεκτικό -->
+  <text x="330" y="228" font-family="'Arial Black','Segoe UI Black',Arial,sans-serif" font-weight="900"
+        font-size="212" letter-spacing="-8" fill="#e30613">inventor</text>
+  <text x="1022" y="86" font-family="Arial,sans-serif" font-size="40" fill="#e30613">®</text>
+  <!-- Tagline -->
+  <text x="338" y="300" font-family="'Segoe UI',Arial,sans-serif" font-weight="400"
+        font-size="56" letter-spacing="1" fill="#e30613" opacity="0.9">We invent. You live.</text>
+</svg>

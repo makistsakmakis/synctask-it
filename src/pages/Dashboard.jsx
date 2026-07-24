@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchRequests } from '../lib/api'
+import { DateFilter, dateMatches, MultiFilter } from '../components/ui'
 import { isOpen, isAssigned, isOverdue, STATUS_COLOR, STATUSES } from '../lib/meta'
 
 const days = (a, b) => Math.round((new Date(a) - new Date(b)) / 86400000)
@@ -7,19 +8,27 @@ const avg = (xs) => (xs.length ? (xs.reduce((s, x) => s + x, 0) / xs.length).toF
 
 export default function Dashboard() {
   const [rows, setRows] = useState([])
+  const [dl, setDl] = useState(null)
+  const [projects, setProjects] = useState([])
   useEffect(() => { fetchRequests().then(setRows).catch(console.error) }, [])
+  const projectOpts = useMemo(() =>
+    [...new Set(rows.map((r) => r.project_name).filter(Boolean))].sort()
+      .map((v) => ({ value: v, label: v })), [rows])
+  const visible = useMemo(() => rows.filter((r) =>
+    dateMatches(dl, r.golive_required)
+    && (projects.length === 0 || projects.includes(r.project_name))), [rows, dl, projects])
 
   const k = useMemo(() => {
     const now = new Date()
-    const completed = rows.filter((r) => r.status === 'Completed')
+    const completed = visible.filter((r) => r.status === 'Completed')
     return {
-      open: rows.filter(isOpen).length,
-      notStarted: rows.filter((r) => r.status === 'Not Started').length,
-      inProgress: rows.filter((r) => r.status === 'In Progress').length,
-      waiting: rows.filter((r) => r.status === 'Waiting').length,
-      deferred: rows.filter((r) => r.status === 'Deferred').length,
+      open: visible.filter(isOpen).length,
+      notStarted: visible.filter((r) => r.status === 'Not Started').length,
+      inProgress: visible.filter((r) => r.status === 'In Progress').length,
+      waiting: visible.filter((r) => r.status === 'Waiting').length,
+      deferred: visible.filter((r) => r.status === 'Deferred').length,
       completed: completed.length,
-      overdue: rows.filter(isOverdue).length,
+      overdue: visible.filter(isOverdue).length,
       completedThisMonth: completed.filter((r) => {
         const d = new Date(r.actual_completion)
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
@@ -27,17 +36,17 @@ export default function Dashboard() {
       avgLead: avg(completed.filter((r) => r.actual_completion)
         .map((r) => days(r.actual_completion, r.request_date))),
     }
-  }, [rows])
+  }, [visible])
 
-  const byStatus = STATUSES.map((s) => ({ label: s, n: rows.filter((r) => r.status === s).length, color: STATUS_COLOR[s] }))
+  const byStatus = STATUSES.map((s) => ({ label: s, n: visible.filter((r) => r.status === s).length, color: STATUS_COLOR[s] }))
   const byImplementor = useMemo(() => {
     const m = new Map()
-    for (const r of rows.filter(isOpen))
+    for (const r of visible.filter(isOpen))
       for (const i of r.implementors ?? [])
         m.set(i.resource?.name, (m.get(i.resource?.name) ?? 0) + 1)
     return [...m.entries()].map(([label, n]) => ({ label, n, color: 'var(--accent)' }))
       .sort((a, b) => b.n - a.n)
-  }, [rows])
+  }, [visible])
   const max = Math.max(1, ...byStatus.map((b) => b.n), ...byImplementor.map((b) => b.n))
 
   const Bars = ({ title, items }) => (
@@ -58,11 +67,12 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="pagehead">
-        <div>
-          <h1>Tasks Dashboard</h1>
-          <div className="sub">System-wide operational view — all figures live from the database.</div>
+      <div className="toolbar">
+        <div className="chips" style={{ gap: 8 }}>
+          <MultiFilter label="Project" options={projectOpts} value={projects} onChange={setProjects} />
+          <DateFilter label="Deadline" tooltip="Due date του task" value={dl} onChange={setDl} />
         </div>
+        <div className="spacer" />
       </div>
       <div className="kpis">
         <div className="kpi"><div className="n">{k.open}</div><div className="l">Total open</div></div>

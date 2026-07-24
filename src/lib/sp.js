@@ -1,4 +1,4 @@
-import { getToken } from './auth'
+import { getToken, getSpToken } from './auth'
 
 const HOST = import.meta.env.VITE_SP_HOSTNAME            // inventorac.sharepoint.com
 const SITE_PATH = import.meta.env.VITE_SP_SITE_PATH      // /sites/ProjectManagement/Development
@@ -194,12 +194,36 @@ export async function probeItemFields() {
   for (const [label, list] of [['Projects', LISTS.projects], ['Tasks', LISTS.requests]]) {
     try {
       const lid = await getListId(list)
-      const res = await g(`/sites/${sid}/lists/${lid}/items?expand=fields&$top=1`)
+      const res = await g(`/sites/${sid}/lists/${lid}/items?expand=fields&$top=1&$orderby=lastModifiedDateTime%20desc`)
       const it = (res.value ?? [])[0]
       out[label] = it ? { keys: Object.keys(it.fields ?? {}), fields: it.fields } : { empty: true }
     } catch (e) { out[label] = { error: e.message } }
   }
   return out
+}
+
+// Directly test writing and reading back Project_Icon on the most recent project.
+export async function testIconWrite() {
+  const sid = await getSiteId()
+  const lid = await getListId(LISTS.projects)
+  const res = await g(`/sites/${sid}/lists/${lid}/items?expand=fields&$top=1&$orderby=lastModifiedDateTime%20desc`)
+  const item = (res.value ?? [])[0]
+  if (!item) return { error: 'No projects found' }
+  const itemId = item.id
+  const testVal = 'data:image/png;base64,' + 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk'.repeat(40)
+  try {
+    await g(`/sites/${sid}/lists/${lid}/items/${itemId}/fields`, { method: 'PATCH', body: { Project_Icon: testVal } })
+  } catch (e) { return { itemId, writeError: e.message } }
+  const check = await g(`/sites/${sid}/lists/${lid}/items/${itemId}?expand=fields`)
+  const readBack = check?.fields?.Project_Icon ?? null
+  return {
+    itemId,
+    title: item.fields?.Title,
+    written_length: testVal.length,
+    readBack_length: readBack?.length ?? 0,
+    readBack_start: readBack?.slice(0, 40) ?? '(null)',
+    match: readBack === testVal,
+  }
 }
 
 // Generic id -> Title map for a lookup target list (e.g. Projects, Tags).
@@ -208,4 +232,96 @@ export async function getTitleMap(listName) {
   const m = new Map()
   for (const it of items) m.set(String(it.id), it.fields?.Title ?? '')
   return m
+}
+
+// ── List item attachments — SharePoint REST (το Graph δεν τα εκθέτει) ─────────
+async function spFetch(path, { method = 'GET', body, headers } = {}) {
+  const token = await getSpToken()
+  const res = await fetch(`https://${HOST}${SITE_PATH}/_api${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json;odata=nometadata', ...headers },
+    body,
+  })
+  if (!res.ok) {
+    let msg = `SharePoint error ${res.status}`
+    try {
+      const d = await res.json()
+      msg = d?.error?.message?.value ?? d?.['odata.error']?.message?.value ?? msg
+    } catch { /* keep default */ }
+    throw new Error(msg)
+  }
+  if (res.status === 204) return null
+  return res.json().catch(() => null)
+}
+
+export async function getAttachments(listName, itemId) {
+  const d = await spFetch(`/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles`)
+  return (d?.value ?? []).map((f) => ({ name: f.FileName, url: `https://${HOST}${f.ServerRelativeUrl}` }))
+}
+
+export async function addAttachment(listName, itemId, file) {
+  const buf = await file.arrayBuffer()
+  const safe = encodeURIComponent(file.name.replace(/'/g, ''))
+  return spFetch(`/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles/add(FileName='${safe}')`, { method: 'POST', body: buf })
+}
+
+export async function deleteAttachment(listName, itemId, fileName) {
+  return spFetch(`/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles/getByFileName('${encodeURIComponent(fileName)}')`, { method: 'POST', headers: { 'X-HTTP-Method': 'DELETE' } })
+}
+
+// ── List item comments — SharePoint REST (το Graph δεν τα εκθέτει) ────────────
+// Τα σχόλια είναι κοινά με το SharePoint UI: ό,τι γράφεται εδώ φαίνεται
+// και εκεί, και αντίστροφα.
+export async function getComments(listName, itemId) {
+  const d = await spFetch(
+    `/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/Comments?$top=100`)
+  return (d?.value ?? []).map((c) => ({
+    id: String(c.id),
+    text: c.text ?? '',
+    author: c.author?.name ?? '',
+    author_email: (c.author?.email ?? '').toLowerCase(),
+    created_at: c.createdDate,
+  }))
+}
+
+export async function addComment(listName, itemId, text) {
+  return spFetch(
+    `/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/Comments`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json;odata=nometadata' },
+      body: JSON.stringify({ text }),
+    })
+}
+
+export async function deleteComment(listName, itemId, commentId) {
+  return spFetch(
+    `/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/Comments(${commentId})`,
+    { method: 'POST', headers: { 'X-HTTP-Method': 'DELETE' } })
+}
+
+// Σχόλια + replies (για το Activity Feed της Welcome Screen)
+const mapComment = (c) => ({
+  id: String(c.id),
+  text: c.text ?? '',
+  author: c.author?.name ?? '',
+  author_email: (c.author?.email ?? '').toLowerCase(),
+  created_at: c.createdDate,
+  replies: (c.replies ?? []).map(mapComment),
+})
+
+export async function getCommentsWithReplies(listName, itemId) {
+  const d = await spFetch(
+    `/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/Comments?$expand=replies&$top=50`)
+  return (d?.value ?? []).map(mapComment)
+}
+
+export async function addReply(listName, itemId, commentId, text) {
+  return spFetch(
+    `/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/Comments(${commentId})/replies`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json;odata=nometadata' },
+      body: JSON.stringify({ text }),
+    })
 }

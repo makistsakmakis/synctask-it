@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { fetchProjects } from '../lib/projects'
+import { useMemo } from 'react'
 
-export default function ProjectsDashboard() {
-  const [rows, setRows] = useState([])
-  useEffect(() => { fetchProjects().then(setRows).catch(console.error) }, [])
-
+// Rows (ήδη φιλτραρισμένα) έρχονται από το ProjectsOverview — τα φίλτρα είναι κοινά για τα 3 views.
+export default function ProjectsDashboard({ rows = [] }) {
   const today = new Date(new Date().toDateString())
   const isDone = (p) => /complete|done|closed/i.test(p.status || '')
   const k = useMemo(() => ({
@@ -44,12 +41,6 @@ export default function ProjectsDashboard() {
 
   return (
     <>
-      <div className="pagehead">
-        <div>
-          <h1>Projects Dashboard</h1>
-          <div className="sub">All projects — figures live from the database.</div>
-        </div>
-      </div>
       <div className="kpis">
         <div className="kpi"><div className="n">{k.total}</div><div className="l">Total projects</div></div>
         <div className="kpi"><div className="n">{k.active}</div><div className="l">Active</div></div>
