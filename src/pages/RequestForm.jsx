@@ -328,7 +328,7 @@ export default function RequestForm() {
             <span className="k" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               Requestor notes
               {allowed('requestor_notes') && (
-                <button type="button" className="btn sm" onClick={() => setRteField('requestor_notes')}>Edit</button>
+                <button type="button" className="btn sm" onClick={() => setRteField('requestor_notes')}>➕ Append</button>
               )}
             </span>
             <div
@@ -341,7 +341,7 @@ export default function RequestForm() {
               <span className="k" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 Implementor notes
                 {allowed('implementor_notes') && (
-                  <button type="button" className="btn sm" onClick={() => setRteField('implementor_notes')}>Edit</button>
+                  <button type="button" className="btn sm" onClick={() => setRteField('implementor_notes')}>➕ Append</button>
                 )}
               </span>
               <div
@@ -382,9 +382,21 @@ export default function RequestForm() {
 
       {rteField && (
         <RichTextEditor
-          html={form[rteField]}
-          title={rteField === 'requestor_notes' ? 'Requestor notes' : 'Implementor notes'}
-          onSave={(html) => { setForm((f) => ({ ...f, [rteField]: html })); setRteField(null) }}
+          html=""
+          title={rteField === 'requestor_notes' ? 'Append to Requestor notes' : 'Append to Implementor notes'}
+          onSave={(html) => {
+            const text = html.replace(/<[^>]*>/g, '').trim()
+            if (text) {
+              const ts = new Date().toLocaleString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+              const header = `<p class="note-meta"><strong>Ο ${profile.name} στις ${ts}, σημείωσε:</strong></p>`
+              setForm((f) => {
+                const existing = f[rteField] || ''
+                const sep = existing ? '<hr class="note-hr"/>' : ''
+                return { ...f, [rteField]: header + html + sep + existing }
+              })
+            }
+            setRteField(null)
+          }}
           onClose={() => setRteField(null)}
         />
       )}

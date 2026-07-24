@@ -401,7 +401,7 @@ export default function ProjectForm() {
             <span className="k" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               Notes
               {allowed('notes') && (
-                <button type="button" className="btn sm" onClick={() => setShowRte(true)}>Edit</button>
+                <button type="button" className="btn sm" onClick={() => setShowRte(true)}>➕ Append</button>
               )}
             </span>
             <div
@@ -492,8 +492,20 @@ export default function ProjectForm() {
 
       {showRte && (
         <RichTextEditor
-          html={form.notes}
-          onSave={(html) => { setForm((f) => ({ ...f, notes: html })); setShowRte(false) }}
+          html=""
+          title="Append note"
+          onSave={(html) => {
+            const text = html.replace(/<[^>]*>/g, '').trim()
+            if (text) {
+              const ts = new Date().toLocaleString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+              const header = `<p class="note-meta"><strong>Ο ${profile.name} στις ${ts}, σημείωσε:</strong></p>`
+              setForm((f) => {
+                const sep = f.notes ? '<hr class="note-hr"/>' : ''
+                return { ...f, notes: header + html + sep + (f.notes || '') }
+              })
+            }
+            setShowRte(false)
+          }}
           onClose={() => setShowRte(false)}
         />
       )}

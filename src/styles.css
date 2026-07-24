@@ -209,6 +209,8 @@ input:disabled, select:disabled, textarea:disabled { background: #f3f4f1; color:
 .notes-preview ul, .notes-preview ol { padding-left: 22px; margin: 4px 0; }
 .notes-preview a { color: var(--accent-ink); }
 .notes-empty { color: var(--ink-soft); font-style: italic; }
+.note-meta { font-size: 11px; color: var(--ink-soft); margin: 0 0 4px; font-style: italic; }
+.note-hr { border: none; border-top: 1px dashed var(--line); margin: 12px 0; }
 
 /* Rich Text Editor dialog */
 .rte-dialog { background: var(--surface); border-radius: 12px; width: min(860px, 96vw);
