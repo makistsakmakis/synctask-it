@@ -255,6 +255,25 @@ export function DateFilterOptions({ value, onChange, itemClass = '' }) {
   )
 }
 
+// Editable αριθμός σελίδας στο pagination — commit με Enter ή blur
+function PageInput({ page, pageCount, onGo }) {
+  const [val, setVal] = useState(String(page + 1))
+  useEffect(() => { setVal(String(page + 1)) }, [page, pageCount])
+  const commit = () => {
+    const n = parseInt(val, 10)
+    if (!isNaN(n) && n >= 1) onGo(Math.min(n, pageCount) - 1)
+    else setVal(String(page + 1))
+  }
+  return (
+    <input className="page-input mono" type="text" inputMode="numeric" value={val}
+      title="Πληκτρολογήστε αριθμό σελίδας και Enter"
+      onFocus={(e) => e.target.select()}
+      onChange={(e) => setVal(e.target.value.replace(/\D/g, ''))}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') { commit(); e.currentTarget.blur() } }} />
+  )
+}
+
 export function DataGrid({
   rows, columns, onRowClick, emptyHint,
   filename = 'export.xlsx',
@@ -458,9 +477,11 @@ export function DataGrid({
       <div className="pager">
         {sorted.length > 0 && (
           <>
+            <button className="btn sm" disabled={curPage === 0} onClick={() => setPage(0)} title="Πρώτη σελίδα">«</button>
             <button className="btn sm" disabled={curPage === 0} onClick={() => setPage(curPage - 1)} title="Προηγούμενη σελίδα">‹</button>
-            <span>Σελίδα {curPage + 1} / {pageCount}</span>
+            <span>Σελίδα <PageInput page={curPage} pageCount={pageCount} onGo={setPage} /> / {pageCount}</span>
             <button className="btn sm" disabled={curPage >= pageCount - 1} onClick={() => setPage(curPage + 1)} title="Επόμενη σελίδα">›</button>
+            <button className="btn sm" disabled={curPage >= pageCount - 1} onClick={() => setPage(pageCount - 1)} title="Τελευταία σελίδα">»</button>
           </>
         )}
         <div className="spacer" />

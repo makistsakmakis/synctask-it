@@ -446,3 +446,7 @@ input:disabled, select:disabled, textarea:disabled { background: #f3f4f1; color:
 .gauge-big { font-family: var(--font-display); font-weight: 700; font-size: 16px; margin-top: 0; }
 .gauge-detail { color: var(--ink-soft); font-size: 11px; margin-top: 2px; }
 @media (max-width: 860px) { .gauges-row { grid-template-columns: 1fr; } }
+
+/* editable page number στο pagination */
+.page-input { width: 40px; text-align: center; padding: 3px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.page-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(14,124,107,.15); }
