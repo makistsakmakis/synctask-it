@@ -51,7 +51,7 @@ function polar(v, r) {
   return [CX + r * Math.cos(rad), CY - r * Math.sin(rad)]
 }
 
-export function Gauge({ title, subtitle, value, num, label, detail, noData }) {
+export function Gauge({ title, subtitle, value, num, label, detail, noData, legend }) {
   const target = noData ? 0 : clamp(value, 0, 100)
   const [v, setV] = useState(100)
   useEffect(() => {
@@ -127,6 +127,7 @@ export function Gauge({ title, subtitle, value, num, label, detail, noData }) {
           <div className="gauge-detail mono">{detail}</div>
         </>
       )}
+      {legend && <div className="gauge-legend">{legend}</div>}
     </div>
   )
 }
@@ -180,8 +181,12 @@ export function TaskGauges({ r }) {
 
   return (
     <div className="gauges-row">
-      <Gauge title="Χρονοδιάγραμμα" subtitle="Πρόοδος έναντι ημερολογιακού χρόνου έως την προθεσμία" {...g1} />
-      <Gauge title="Ώρες εργασίας" subtitle="Πρόοδος έναντι καταναλωμένων ωρών επί της εκτίμησης" {...g2} />
+      <Gauge title="Χρονοδιάγραμμα" subtitle="Πρόοδος έναντι ημερολογιακού χρόνου έως την προθεσμία"
+        legend={<>Υπολογισμός: <b>% Complete</b> vs ημερολογιακά διανυθέν διάστημα <b>Actual Start</b> (ή <b>Request Date</b>) → <b>Due Date</b></>}
+        {...g1} />
+      <Gauge title="Ώρες εργασίας" subtitle="Πρόοδος έναντι καταναλωμένων ωρών επί της εκτίμησης"
+        legend={<>Υπολογισμός: <b>% Complete</b> vs <b>Actual</b> / <b>Estimated man-hours</b></>}
+        {...g2} />
     </div>
   )
 }
