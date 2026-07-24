@@ -28,7 +28,7 @@ function Shell({ children }) {
   return (
     <div className="shell">
       <aside className="side">
-        <div className="brand">Sync<span>Task</span> IT</div>
+        <div className="brand">Sync<span>Task</span></div>
         <div className="who">
           <b>{profile.name}</b>
           {profile.email}<br />{ROLE_LABEL[role]}{previewRole ? ' (preview)' : ''}
@@ -91,9 +91,9 @@ export default function App() {
 
   if (!CONFIGURED) return (
     <div className="login"><div className="box">
-      <div className="brand">Sync<span>Task</span> IT</div>
+      <div className="brand">Sync<span>Task</span></div>
       <h2 style={{ fontSize: 16, margin: '10px 0' }}>Σχεδόν έτοιμο — εκκρεμεί η σύνδεση με το Office 365</h2>
-      <p>Το περιβάλλον λειτουργεί. Μόλις το IT απαντήσει με τα δύο IDs του app registration
+      <p>Το περιβάλλον λειτουργεί. Μόλις οριστούν τα δύο IDs του app registration
       (Application client ID και Directory tenant ID), θα οριστούν στο Netlify και η εφαρμογή
       θα ενεργοποιηθεί με κανονικό Microsoft sign-in.</p>
       <p className="mono" style={{ fontSize: 11.5 }}>Αναμένονται: VITE_ENTRA_CLIENT_ID · VITE_ENTRA_TENANT_ID</p>
@@ -103,7 +103,7 @@ export default function App() {
   if (!account) return <Login onSignedIn={setAccount} />
   if (loadError) return (
     <div className="login"><div className="box">
-      <div className="brand">Sync<span>Task</span> IT</div>
+      <div className="brand">Sync<span>Task</span></div>
       <div className="err">Could not load reference lists from SharePoint: {loadError}</div>
       <p>Check the site path, list names and API permissions, then reload. The /diag page can help verify column names once connectivity works.</p>
     </div></div>

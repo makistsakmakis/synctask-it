@@ -1,6 +1,6 @@
-# SyncTask IT — Netlify + SharePoint Lists
+# SyncTask — Netlify + SharePoint Lists
 
-IT Implementation Requests Management System (Functional Spec v2.1) as a React SPA
+Project & Task Management System (Functional Spec v2.1) as a React SPA
 hosted on Netlify, with **your existing SharePoint lists as the database** and
 **Office 365 (Entra ID) sign-in**. No separate accounts, no separate data store.
 
@@ -17,7 +17,7 @@ hosted on Netlify, with **your existing SharePoint lists as the database** and
 
 ### 1. Entra ID app registration (~10 min, may need tenant admin)
 1. Azure portal → **Microsoft Entra ID → App registrations → New registration**
-2. Name: `SyncTask IT` · Supported accounts: *single tenant*
+2. Name: `SyncTask` · Supported accounts: *single tenant*
 3. Platform: **Single-page application (SPA)** · Redirect URI: `http://localhost:5173`
    (add your Netlify URL later as a second redirect URI)
 4. **API permissions → Add → Microsoft Graph → Delegated**:

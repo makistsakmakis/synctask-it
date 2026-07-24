@@ -44,7 +44,7 @@ const fromSP = (item, users) => {
     proposed_start: (f[F.proposed_start] ?? '').slice(0, 10),
     deadline: (f[F.deadline] ?? '').slice(0, 10),
     product: f[F.product] ?? '',
-    link: f[F.link] ?? '',
+    link: (typeof f[F.link] === 'object' ? f[F.link]?.Url : f[F.link]) ?? '',
     notes: f[F.notes] ?? '',
     created_at: item.createdDateTime,
     modified_at: item.lastModifiedDateTime,
@@ -60,6 +60,13 @@ async function toSP(fields) {
     if (!(k in fields)) continue
     let v = fields[k]
     if (v === '' || v == null) { if (k !== 'title') continue; v = '' }
+    if (k === 'link') {
+      if (v) {
+        const url = /^https?:\/\//i.test(v) ? v : `https://${v}`
+        out[col] = { Url: url, Description: url }
+      }
+      continue
+    }
     out[col] = k === 'owner_id' ? Number(v) : v
   }
   if ('status' in fields && fields.status !== '' && fields.status != null) {
