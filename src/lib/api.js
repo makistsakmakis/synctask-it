@@ -49,8 +49,11 @@ export async function fetchTagOptions() {
 }
 
 let _managersP = null
+// Η λίστα Managers έχει καταργηθεί (24/07/2026) — οι managers ορίζονται πλέον
+// από το Is_Manager flag στη λίστα Resources. Αν η λίστα λείπει, επιστρέφουμε
+// κενό πίνακα ώστε ο ρόλος να προκύπτει αποκλειστικά από το Resources.
 export function fetchManagers() {
-  return (_managersP ??= Promise.all([listItems(LISTS.managers), users()]).then(([items, u]) =>
+  return (_managersP ??= Promise.all([listItems(LISTS.managers).catch(() => []), users()]).then(([items, u]) =>
     items.map((i) => ({
       id: String(i.id),
       person_id: String(i.fields?.[MANAGER_FIELDS.person_id] ?? ''), // site user ID of the manager person
