@@ -1,4 +1,4 @@
-import { LISTS, listItems, getItem, createItem, updateItemFields, deleteItem, getSiteUsers, getListColumns } from './sp'
+import { LISTS, listItems, getItem, createItem, updateItemFields, deleteItem, getSiteUsers, getListColumns, updateHyperlinkField } from './sp'
 import { fetchRequests } from './api'
 
 // app field -> SharePoint internal column (Projects list)
@@ -188,13 +188,7 @@ async function toSP(fields) {
     if (!(k in fields)) continue
     let v = fields[k]
     if (v === '' || v == null) { if (k !== 'title') continue; v = '' }
-    if (k === 'link') {
-      if (v) {
-        const url = /^https?:\/\//i.test(v) ? v : `https://${v}`
-        out[col] = { Url: url, Description: url }
-      }
-      continue
-    }
+    if (k === 'link') continue // handled separately via SharePoint REST (Graph rejects hyperlink columns)
     out[col] = (k === 'owner_id' || k === 'supervisor_id') ? Number(v)
       : k === 'on_going' ? Boolean(v) : v
   }
@@ -246,6 +240,12 @@ export async function signProject(id, { userLookupId, userName = '', extraFields
   await updateItemFields(LISTS.projects, id, out)
 }
 
+// Write the Link (Hyperlink) field via SharePoint REST — Graph doesn't support it.
+function normalizeUrl(v) {
+  if (!v) return ''
+  return /^https?:\/\//i.test(v) ? v : `https://${v}`
+}
+
 export async function createProject(fields) {
   const sp = await toSP(fields)
   const icon = sp[F.icon]
@@ -254,11 +254,17 @@ export async function createProject(fields) {
   if (icon) {
     await updateItemFields(LISTS.projects, String(created.id), { [F.icon]: icon })
   }
+  if (fields.link) {
+    await updateHyperlinkField(LISTS.projects, String(created.id), F.link, normalizeUrl(fields.link))
+  }
   return String(created.id)
 }
 
 export async function updateProject(id, fields) {
   await updateItemFields(LISTS.projects, id, await toSP(fields))
+  if ('link' in fields) {
+    await updateHyperlinkField(LISTS.projects, id, F.link, normalizeUrl(fields.link))
+  }
 }
 
 export async function removeProject(id) {

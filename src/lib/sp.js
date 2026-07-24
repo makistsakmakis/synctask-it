@@ -25,7 +25,10 @@ export async function g(path, { method = 'GET', body, headers } = {}) {
   })
   if (res.status === 204) return null
   const data = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(data?.error?.message ?? `Graph error ${res.status}`)
+  if (!res.ok) {
+    console.error('[Graph error]', method, `${GRAPH}${path}`, res.status, JSON.stringify(data))
+    throw new Error(data?.error?.message ?? `Graph error ${res.status}`)
+  }
   return data
 }
 
@@ -232,6 +235,22 @@ export async function getTitleMap(listName) {
   const m = new Map()
   for (const it of items) m.set(String(it.id), it.fields?.Title ?? '')
   return m
+}
+
+// Write a Hyperlink column via SharePoint REST ValidateUpdateListItem.
+// Graph API v1.0 does not accept hyperlink columns in a standard PATCH body.
+export async function updateHyperlinkField(listName, itemId, fieldName, url) {
+  return spFetch(
+    `/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${Number(itemId)})/ValidateUpdateListItem`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json;odata=nometadata' },
+      body: JSON.stringify({
+        formValues: [{ FieldName: fieldName, FieldValue: url || '' }],
+        bNewDocumentUpdate: false,
+      }),
+    }
+  )
 }
 
 // ── List item attachments — SharePoint REST (το Graph δεν τα εκθέτει) ─────────
