@@ -107,6 +107,13 @@ export default function RequestsPage() {
     return scoped // Already filtered above via effectiveRole
   }, [scoped, profile, effectiveRole])
 
+  // «Τα δικά μου»: tasks όπου είμαι Created by, Modified by ή Assigned to
+  const mineChip = useMemo(() => ({
+    'Τα δικά μου': (r) =>
+      [r.requestor_email, r.modified_by_email, r.assigned_to_email]
+        .some((e) => (e ?? '').toLowerCase() === me),
+  }), [me])
+
   // Όλοι μπορούν να δημιουργούν tasks — οι μη-admin ΜΟΝΟ σε ON_GOING projects
   // (επιβάλλεται στη φόρμα, όπου το Project dropdown περιορίζεται αναλόγως)
   const canCreate = true
@@ -123,6 +130,7 @@ export default function RequestsPage() {
         )}
       </div>
       <RequestGrid rows={previewScoped} columns={view.columns} filters={view.filters}
+        extraFilters={mineChip} defaultFilter="Τα δικά μου"
         emptyHint={
           effectiveRole === 'requestor' ? 'No tasks under your projects yet.'
           : effectiveRole === 'manager'  ? 'No tasks under your supervised projects yet.'

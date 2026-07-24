@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../App'
 import { fetchProjects } from '../lib/projects'
-import { fetchRequests } from '../lib/api'
+import { fetchRequests, fetchResources } from '../lib/api'
 import { fmtDate } from '../lib/meta'
 import { DataGrid, StatusBadge } from '../components/ui'
 
@@ -61,8 +61,16 @@ export default function ProjectsPage() {
   const { profile, effectiveRole } = useSession()
   const [rows, setRows] = useState([])
   const [myProjectIds, setMyProjectIds] = useState(null)
+  const [myResIds, setMyResIds] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const me = (profile.email ?? '').toLowerCase()
+
+  useEffect(() => {
+    // Resource ids του τρέχοντος χρήστη — για το φίλτρο «Τα δικά μου» (RACI)
+    fetchResources()
+      .then((rs) => setMyResIds(new Set(rs.filter((x) => (x.email ?? '').toLowerCase() === me).map((x) => String(x.id)))))
+      .catch(() => {})
+  }, [me])
 
   useEffect(() => {
     const p1 = fetchProjects().then(setRows).catch(console.error)
@@ -90,11 +98,16 @@ export default function ProjectsPage() {
 
   // Slicer by status (όπως στα tasks) — δυναμικά από τα διαθέσιμα statuses
   const chipDefs = useMemo(() => {
+    // «Τα δικά μου»: Owner (created by), Supervisor ή σε οποιονδήποτε ρόλο RACI
+    const isMine = (p) =>
+      p.owner_email === me || p.supervisor_email === me ||
+      [p.responsible_ids, p.accountable_ids, p.consulted_ids, p.informed_ids]
+        .some((arr) => (arr ?? []).some((id) => myResIds.has(String(id))))
     const ORDER = ['Waiting Manager Approval', 'Not Started', 'In Progress', 'Waiting', 'On Hold', 'Deferred', 'Completed']
     const present = [...new Set(scopedRows.map((p) => p.status).filter(Boolean))]
     const ordered = [...ORDER.filter((st) => present.includes(st)), ...present.filter((st) => !ORDER.includes(st))]
-    return { All: () => true, ...Object.fromEntries(ordered.map((st) => [st, (p) => p.status === st])) }
-  }, [scopedRows])
+    return { 'Τα δικά μου': isMine, All: () => true, ...Object.fromEntries(ordered.map((st) => [st, (p) => p.status === st])) }
+  }, [scopedRows, me, myResIds])
 
   const canCreate = effectiveRole === 'requestor' || effectiveRole === 'admin'
 
@@ -129,7 +142,7 @@ export default function ProjectsPage() {
             emptyHint={emptyHint}
             filename="projects.xlsx"
             chips={chipDefs}
-            defaultChip="All"
+            defaultChip="Τα δικά μου"
             rowClass={(p) => {
               if (!p.deadline || p.status === 'Completed') return ''
               return new Date(p.deadline) < new Date(new Date().toDateString()) ? 'row-overdue' : ''

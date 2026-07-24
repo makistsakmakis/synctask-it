@@ -612,11 +612,14 @@ export function DataGrid({
 }
 
 // ── RequestGrid — thin wrapper around DataGrid for the Tasks list ─────────────
-export function RequestGrid({ rows, columns, filters, defaultFilter = 'Open', emptyHint }) {
+export function RequestGrid({ rows, columns, filters, defaultFilter = 'Open', emptyHint, extraFilters }) {
   const nav = useNavigate()
   const chipDefs = useMemo(
-    () => Object.fromEntries((filters ?? Object.keys(QUICK_FILTERS)).map((f) => [f, QUICK_FILTERS[f] ?? (() => true)])),
-    [filters]
+    () => ({
+      ...(extraFilters ?? {}),
+      ...Object.fromEntries((filters ?? Object.keys(QUICK_FILTERS)).map((f) => [f, QUICK_FILTERS[f] ?? (() => true)])),
+    }),
+    [filters, extraFilters]
   )
   const cols = useMemo(
     () => columns.map((c) => (c.key === 'flags' || !c.label) ? { ...c, noFilter: true, noSort: true } : c),
