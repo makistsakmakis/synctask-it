@@ -142,7 +142,7 @@ const fromSP = (item, users, resMap = new Map(), raciKeys = RACI_COLS_DEFAULT, s
     proposed_start: (f[F.proposed_start] ?? '').slice(0, 10),
     deadline:       (f[F.deadline]      ?? '').slice(0, 10),
     product: f[F.product] ?? '',
-    link:    f[F.link]    ?? '',
+    link:    (typeof f[F.link] === 'object' ? f[F.link]?.Url : f[F.link]) ?? '',
     on_going: Boolean(f[F.on_going]),
     notes:   (() => {
       const raw = typeof f[F.notes] === 'string' ? f[F.notes] : ''
@@ -189,7 +189,10 @@ async function toSP(fields) {
     let v = fields[k]
     if (v === '' || v == null) { if (k !== 'title') continue; v = '' }
     if (k === 'link') {
-      if (v) out[col] = /^https?:\/\//i.test(v) ? v : `https://${v}`
+      if (v) {
+        const url = /^https?:\/\//i.test(v) ? v : `https://${v}`
+        out[col] = { Url: url, Description: url }
+      }
       continue
     }
     out[col] = (k === 'owner_id' || k === 'supervisor_id') ? Number(v)
