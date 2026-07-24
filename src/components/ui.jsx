@@ -272,6 +272,7 @@ export function DataGrid({
   const [openFilter, setOpenFilter] = useState(null)
   const [filterSearch, setFilterSearch] = useState('')
   const [filterPos, setFilterPos] = useState({ top: 0, left: 0 })
+  const [hdrTooltip, setHdrTooltip] = useState(null) // { text, x, y } — fixed-position tooltip για headers
   const [page, setPage] = useState(0)
   const popRef = useRef(null)
   const PAGE_SIZE = 10
@@ -481,7 +482,13 @@ export function DataGrid({
                     const sortDir = sort?.key === col.key ? sort.dir : null
                     return (
                       <th key={col.key} className={col.noSort ? '' : 'sortable'} onClick={() => clickSort(col)}>
-                        <div className="th-inner" data-tooltip={col.tooltip || undefined}>
+                        <div className="th-inner"
+                          onMouseEnter={col.tooltip ? (e) => {
+                            const r = e.currentTarget.getBoundingClientRect()
+                            setHdrTooltip({ text: col.tooltip, x: r.left + r.width / 2, y: r.top - 8 })
+                          } : undefined}
+                          onMouseLeave={col.tooltip ? () => setHdrTooltip(null) : undefined}
+                        >
                           <span>{col.label}{sortDir ? <span className="sortarrow">{sortDir > 0 ? '↑' : '↓'}</span> : null}</span>
                           {!col.noFilter && col.label && (
                             <button
@@ -508,6 +515,18 @@ export function DataGrid({
           </div>
         )}
       </div>
+
+      {/* Header tooltip — fixed-position to escape table overflow clipping */}
+      {hdrTooltip && (
+        <div style={{
+          position: 'fixed', zIndex: 9999, pointerEvents: 'none',
+          left: hdrTooltip.x, top: hdrTooltip.y, transform: 'translate(-50%, -100%)',
+          background: '#1c2230', color: '#fff', padding: '8px 12px', borderRadius: 7,
+          fontSize: 12, fontWeight: 400, textTransform: 'none', letterSpacing: 0,
+          whiteSpace: 'normal', width: 280, lineHeight: 1.5,
+          boxShadow: '0 4px 16px rgba(0,0,0,.25)',
+        }}>{hdrTooltip.text}</div>
+      )}
 
       {/* Filter dropdown — fixed-position to escape table overflow clipping */}
       {openFilter && (
@@ -614,7 +633,7 @@ export function ConfirmDialog({ title, body, onYes, onNo, busy }) {
 
 // Multi-select person picker for RACI fields.
 // options: [{ id, name }], value: string[] of IDs
-export function MultiPersonSelect({ options, value, onChange, disabled }) {
+export function MultiPersonSelect({ options, value, onChange, disabled, tooltipMap }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -627,15 +646,31 @@ export function MultiPersonSelect({ options, value, onChange, disabled }) {
 
   const toggle = (id) => onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id])
   const selected = options.filter((o) => value.includes(o.id))
-  const label = selected.length === 0 ? 'Επιλογή…'
-    : selected.length <= 2 ? selected.map((o) => o.name).join(', ')
-    : `${selected.slice(0, 2).map((o) => o.name).join(', ')} +${selected.length - 2}`
+
+  // Build label — if tooltipMap provided, wrap each name in a span with title
+  const labelNode = selected.length === 0
+    ? <span style={{ color: 'var(--ink-soft)' }}>Επιλογή…</span>
+    : tooltipMap
+      ? <span style={{ color: 'var(--ink)' }}>
+          {selected.slice(0, 3).map((o, i) => (
+            <span key={o.id} title={tooltipMap.get(o.id) || ''}
+              style={{ cursor: tooltipMap.get(o.id) ? 'help' : 'default' }}>
+              {o.name}{i < Math.min(selected.length, 3) - 1 ? ', ' : ''}
+            </span>
+          ))}
+          {selected.length > 3 ? ` +${selected.length - 3}` : ''}
+        </span>
+      : <span style={{ color: 'var(--ink)' }}>
+          {selected.length <= 2
+            ? selected.map((o) => o.name).join(', ')
+            : `${selected.slice(0, 2).map((o) => o.name).join(', ')} +${selected.length - 2}`}
+        </span>
 
   return (
     <div className="mpselect" ref={ref}>
       <button type="button" className="mpselect-btn" disabled={disabled}
         onClick={() => setOpen((o) => !o)}>
-        <span style={{ color: selected.length ? 'var(--ink)' : 'var(--ink-soft)' }}>{label}</span>
+        {labelNode}
         {!disabled && <span style={{ opacity: 0.5 }}>▾</span>}
       </button>
       {open && !disabled && (

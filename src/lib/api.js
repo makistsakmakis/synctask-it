@@ -65,6 +65,7 @@ export function fetchResources() {
     items.map((i) => ({
       id: String(i.id),
       name: i.fields?.[RESOURCE_FIELDS.name] ?? '',
+      personName: u.get(String(i.fields?.[RESOURCE_FIELDS.person_id] ?? ''))?.title ?? '',
       email: emailOf(u, i.fields?.[RESOURCE_FIELDS.person_id]),
       is_manager: Number(i.fields?.[RESOURCE_FIELDS.is_manager]) === 1,
       is_implementor: Number(i.fields?.[RESOURCE_FIELDS.is_implementor]) === 1,

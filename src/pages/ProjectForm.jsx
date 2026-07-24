@@ -123,6 +123,7 @@ export default function ProjectForm() {
   const [busy, setBusy] = useState(false)
   const [showRte, setShowRte] = useState(false)
   const [resourceOpts, setResourceOpts] = useState([])
+  const [resources, setResources] = useState([])
   const [showIconPicker, setShowIconPicker] = useState(false)
 
   const pickIcon = async (icon) => {
@@ -145,6 +146,7 @@ export default function ProjectForm() {
     fetchUserOptions().then(setUsers).catch(() => setUsers([]))
     fetchProjectStatuses().then(setStatuses).catch(() => setStatuses([]))
     fetchResourceOptions().then(setResourceOpts).catch(() => setResourceOpts([]))
+    fetchResources().then(setResources).catch(() => setResources([]))
   }, [])
 
   // New project: default the owner to the current user.
@@ -420,19 +422,23 @@ export default function ProjectForm() {
             </span>
           </div>
           <div className="form">
-            {RACI_DEFS.map(({ key, label, tooltip }) => (
-              <div key={key} className="f">
-                <span className="k" title={tooltip} style={{ cursor: 'help', textDecorationLine: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>
-                  {label} ⓘ
-                </span>
-                <MultiPersonSelect
-                  options={resourceOpts}
-                  value={form[key]}
-                  onChange={(v) => setForm((f) => ({ ...f, [key]: v }))}
-                  disabled={!allowed(key)}
-                />
-              </div>
-            ))}
+            {(() => {
+              const raciTooltipMap = new Map(resources.map((r) => [r.id, r.personName || r.email || '']))
+              return RACI_DEFS.map(({ key, label, tooltip }) => (
+                <div key={key} className="f">
+                  <span className="k" title={tooltip} style={{ cursor: 'help', textDecorationLine: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>
+                    {label} ⓘ
+                  </span>
+                  <MultiPersonSelect
+                    options={resourceOpts}
+                    value={form[key]}
+                    onChange={(v) => setForm((f) => ({ ...f, [key]: v }))}
+                    disabled={!allowed(key)}
+                    tooltipMap={raciTooltipMap}
+                  />
+                </div>
+              ))
+            })()}
           </div>
         </div>
 

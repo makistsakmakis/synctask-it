@@ -108,15 +108,37 @@ export default function ProjectDetail() {
         </div>
 
         {/* RACI */}
-        <div className="raci-box">
-          <h3>RACI</h3>
-          <div className="fields">
-            <F k="Responsible (R)" v={(p.responsible ?? []).join(', ')} />
-            <F k="Accountable (A)" v={(p.accountable ?? []).join(', ')} />
-            <F k="Consulted (C)" v={(p.consulted ?? []).join(', ')} />
-            <F k="Informed (I)" v={(p.informed ?? []).join(', ')} />
-          </div>
-        </div>
+        {(() => {
+          // Map from resource ID → real person name (for hover tooltip)
+          const personMap = new Map(resources.map((r) => [r.id, r.personName || r.email || '']))
+          const RaciVal = ({ ids, names }) => {
+            if (!names?.length) return <span>—</span>
+            return (
+              <span>
+                {names.map((name, i) => {
+                  const tip = personMap.get(String(ids?.[i] ?? '')) || ''
+                  return (
+                    <span key={i} title={tip || undefined}
+                      style={tip ? { cursor: 'help', textDecoration: 'underline dotted', textUnderlineOffset: 3 } : {}}>
+                      {name}{i < names.length - 1 ? ', ' : ''}
+                    </span>
+                  )
+                })}
+              </span>
+            )
+          }
+          return (
+            <div className="raci-box">
+              <h3>RACI</h3>
+              <div className="fields">
+                <div className="field"><div className="k">Responsible (R)</div><div className="v"><RaciVal ids={p.responsible_ids} names={p.responsible} /></div></div>
+                <div className="field"><div className="k">Accountable (A)</div><div className="v"><RaciVal ids={p.accountable_ids} names={p.accountable} /></div></div>
+                <div className="field"><div className="k">Consulted (C)</div><div className="v"><RaciVal ids={p.consulted_ids} names={p.consulted} /></div></div>
+                <div className="field"><div className="k">Informed (I)</div><div className="v"><RaciVal ids={p.informed_ids} names={p.informed} /></div></div>
+              </div>
+            </div>
+          )
+        })()}
         {p.notes && (
           <div className="notesblock" style={{ marginTop: 12 }}>
             <h3>Notes</h3>
